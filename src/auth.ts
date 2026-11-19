@@ -6,7 +6,7 @@ const confirmCookie = '__Host-confirm';
 const sessionSeconds = 30 * 86400;
 const cookieFlags = 'Path=/; HttpOnly; Secure; SameSite=Lax';
 
-export type AppEnv = Env & { TURNSTILE_SECRET?: string; SITE_NAME?: string };
+export type AppEnv = Env & { TURNSTILE_SECRET?: string };
 
 export interface Member {
   id: number;

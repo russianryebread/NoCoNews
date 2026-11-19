@@ -10,7 +10,7 @@ export function page(title: string, content: string, status = 200): Response {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} · NoCoNews</title>
+<title>${escapeHtml(title)}</title>
 <link rel="stylesheet" href="/site.css">
 </head>
 <body>
@@ -29,4 +29,12 @@ export function page(title: string, content: string, status = 200): Response {
       'X-Content-Type-Options': 'nosniff',
     },
   });
+}
+
+export function brand(response: Response, siteName: string): Response {
+  if (!response.headers.get('Content-Type')?.startsWith('text/html')) return response;
+  return new HTMLRewriter()
+    .on('.brand', { element(element) { element.setInnerContent(siteName); } })
+    .on('title', { element(element) { element.append(` · ${siteName}`); } })
+    .transform(response);
 }
