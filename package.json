@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "wrangler": "4.165.0"
+  },
+  "name": "noconews",
+  "scripts": {
+    "dev": "wrangler dev",
+    "check": "wrangler types && tsc",
+    "db:local": "wrangler d1 migrations apply DB --local"
+  }
+}
