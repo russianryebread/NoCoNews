@@ -1,6 +1,7 @@
 import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
 import { escapeHtml, icon, page } from './html';
+import { renderMarkdown } from './markdown';
 
 const reasons = ['Spam', 'Abuse', 'Duplicate', 'Off-topic', 'Other'];
 
@@ -25,8 +26,12 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
     const text = await db.prepare('SELECT guidelines FROM community_settings WHERE id = 1').first<string>('guidelines');
     const edit = member?.role === 'admin' ? `<form class="stack" method="post" action="/admin/guidelines">
       <label>Community guidelines <textarea name="guidelines" rows="8" maxlength="10000" required>${escapeHtml(text)}</textarea></label>
+      <small class="metadata">Basic Markdown supported. Links and images display as text.</small>
       <button>Publish</button></form>` : '';
-    return page('Guidelines', `<h1>Community guidelines</h1><p class="story-body">${escapeHtml(text ?? 'Community guidelines will appear here when published.')}</p>${edit}`);
+    const published = text === null
+      ? '<p>Community guidelines will appear here when published.</p>'
+      : `<div class="markdown">${renderMarkdown(text)}</div>`;
+    return page('Guidelines', `<h1>Community guidelines</h1>${published}${edit}`);
   }
   if (!member) return redirect('/login');
 
