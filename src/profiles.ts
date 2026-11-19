@@ -11,9 +11,12 @@ interface PublicProfile {
 
 function profilePage(profile: PublicProfile, own: boolean, error = '', draft = profile.bio): Response {
   const bio = profile.bio ? `<div class="markdown">${renderMarkdown(profile.bio)}</div>` : '';
-  const edit = own ? `<form class="stack" method="post">
-    <label>Bio <textarea name="bio" rows="3" maxlength="280">${escapeHtml(draft)}</textarea></label>
-    <span class="metadata">Public, up to 280 characters. Basic Markdown works here.</span>
+  const edit = own ? `<form class="stack markdown-form editor-panel" method="post">
+    <div class="markdown-field">
+      <label for="bio-source">Edit bio</label>
+      <textarea id="bio-source" name="bio" rows="3" maxlength="280" aria-describedby="bio-format">${escapeHtml(draft)}</textarea>
+      <small class="metadata" id="bio-format">Public, up to 280 characters. Basic Markdown supported.</small>
+    </div>
     ${error ? `<p role="alert">${escapeHtml(error)}</p>` : ''}
     <button>Save bio</button>
   </form>` : '';

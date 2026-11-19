@@ -24,9 +24,12 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
   const member = await currentMember(request, db);
   if (request.method === 'GET' && path === '/guidelines') {
     const text = await db.prepare('SELECT guidelines FROM community_settings WHERE id = 1').first<string>('guidelines');
-    const edit = member?.role === 'admin' ? `<form class="stack" method="post" action="/admin/guidelines">
-      <label>Community guidelines <textarea name="guidelines" rows="8" maxlength="10000" required>${escapeHtml(text)}</textarea></label>
-      <small class="metadata">Basic Markdown supported. Links and images display as text.</small>
+    const edit = member?.role === 'admin' ? `<form class="stack markdown-form editor-panel" method="post" action="/admin/guidelines">
+      <div class="markdown-field">
+        <label for="guidelines-source">Edit community guidelines</label>
+        <textarea id="guidelines-source" name="guidelines" rows="8" maxlength="10000" aria-describedby="guidelines-format" required>${escapeHtml(text)}</textarea>
+        <small class="metadata" id="guidelines-format">Basic Markdown supported. Links and images display as text.</small>
+      </div>
       <button>Publish</button></form>` : '';
     const published = text === null
       ? '<p>Community guidelines will appear here when published.</p>'

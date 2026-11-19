@@ -119,9 +119,25 @@ form:not(.inline) button:hover { background: #e7ebe3; }
 }
 .icon-link:hover, .icon-link:focus-visible { color: #176549; background: #e8eee7; }
 .report-link:hover, .report-link:focus-visible { color: #a13f2b; background: #f6ece6; }
-.comment-form { width: min(100%, 32rem); }
-.comment-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; width: 100%; }
-.comment-actions button { margin-inline-start: auto; }
+.markdown-form { box-sizing: border-box; width: min(100%, 42rem); }
+.markdown-form > button { justify-self: end; }
+.markdown-field { display: grid; gap: .25rem; min-width: 0; width: 100%; }
+.markdown-field label { font-weight: 600; }
+form .markdown-field textarea {
+  width: 100%;
+  padding: .5rem .65rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.editor-panel {
+  margin-block-start: 1.5rem;
+  padding: clamp(.75rem, 3vw, 1.25rem);
+  border: 1px solid var(--rule);
+  border-radius: .625rem;
+  background: #f3f3ed;
+  box-shadow: 0 1px 3px rgb(37 39 34 / 5%);
+}
+.comment-form, .story-form { width: min(100%, 32rem); }
+.comment-form { margin-block-start: .5rem; }
 
 .markdown { overflow-wrap: anywhere; }
 .markdown > :first-child { margin-block-start: 0; }

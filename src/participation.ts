@@ -10,21 +10,29 @@ export function voteControl(kind: 'stories' | 'comments', id: number, voted: num
 }
 
 export function commentForm(story: number, parent?: number): string {
-  return `<form class="stack comment-form" method="post" action="/stories/${story}/comments">
+  const fieldId = parent ? `reply-${parent}-body` : 'comment-body';
+  return `<form class="stack markdown-form editor-panel comment-form" method="post" action="/stories/${story}/comments">
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
     ${parent ? `<input type="hidden" name="parent" value="${parent}">` : ''}
-    <label>${parent ? 'Reply' : 'Comment'} <textarea name="body" maxlength="10000" required rows="3"></textarea></label>
-    <div class="comment-actions"><small class="metadata">Basic Markdown supported.</small>
-    <button>Post ${parent ? 'reply' : 'comment'}</button></div></form>`;
+    <div class="markdown-field">
+      <label for="${fieldId}">${parent ? 'Reply' : 'Comment'}</label>
+      <textarea id="${fieldId}" name="body" maxlength="10000" aria-describedby="${fieldId}-format" required rows="3"></textarea>
+      <small class="metadata" id="${fieldId}-format">Basic Markdown supported.</small>
+    </div>
+    <button>Post ${parent ? 'reply' : 'comment'}</button></form>`;
 }
 
 function submissionForm(): Response {
-  return page('Submit', `<h1>Submit a story</h1><form class="stack" method="post" action="/stories">
+  return page('Submit', `<h1>Submit a story</h1><form class="stack markdown-form story-form" method="post" action="/stories">
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
     <label>Title <input name="title" maxlength="200" required></label>
     <label>Link <input name="url" type="url" maxlength="2048"></label>
-    <label>Text <textarea name="body" maxlength="10000" rows="5"></textarea></label>
-    <p class="metadata">Enter a link or write a text post with optional Markdown. See the <a href="/guidelines">community guidelines</a>.</p><button>Submit</button></form>`);
+    <div class="markdown-field">
+      <label for="story-source">Text</label>
+      <textarea id="story-source" name="body" maxlength="10000" rows="5" aria-describedby="story-format"></textarea>
+      <small class="metadata" id="story-format">Enter a link or write a text post with optional Markdown. See the <a href="/guidelines">community guidelines</a>.</small>
+    </div>
+    <button>Submit</button></form>`);
 }
 
 function requestKey(form: URLSearchParams): string {
