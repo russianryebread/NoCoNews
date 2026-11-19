@@ -1,3 +1,4 @@
+import { mailConfigured, sendSignInMail } from './mail';
 import { cookieValue, InvalidForm, readForm, redirect } from './forms';
 import { page, profileLink } from './html';
 import { Author } from './components/content';
@@ -8,7 +9,7 @@ const confirmCookie = '__Host-confirm';
 const sessionSeconds = 30 * 86400;
 const cookieFlags = 'Path=/; HttpOnly; Secure; SameSite=Lax';
 
-export type AppEnv = Env & { TURNSTILE_SECRET?: string };
+export type AppEnv = Env & { TURNSTILE_SECRET?: string; MAILGUN_API_KEY?: string };
 
 export interface Member {
   id: number;
@@ -33,18 +34,23 @@ export async function currentMember(request: Request, db: D1Database): Promise<M
     .bind(await digest(session)).first<Member>();
 }
 
+function openRegistration(env: AppEnv): boolean {
+  return env.MAIL_PROVIDER === 'mailgun' && env.OPEN_REGISTRATION === 'true';
+}
+
 function allowed(env: AppEnv, email: string): boolean {
-  return email.length > 0 && env.LOGIN_RECIPIENTS.split(',')
+  if (email.length > 254 || !/^[^\s@<>,;:"()\[\]\\]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(email)) return false;
+  return openRegistration(env) || env.LOGIN_RECIPIENTS.split(',')
     .some(recipient => recipient.trim().toLowerCase() === email);
 }
 
 async function requestLink(request: Request, env: AppEnv, form: URLSearchParams): Promise<Response> {
-  const response = () => page('Check your inbox', '<h1>Check your inbox</h1><p>If your address is invited, we’ll send a sign-in link.</p>');
+  const response = () => page('Check your inbox', '<h1>Check your inbox</h1><p>If your address is eligible, we’ll send a sign-in link.</p>');
   const { success } = await env.LOGIN_LIMIT.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'unknown' });
   if (!success) return page('Try again later', '<h1>Too many sign-in requests</h1>', 429);
 
   const challenge = form.get('cf-turnstile-response');
-  if (!env.TURNSTILE_SECRET || !env.TURNSTILE_SITE_KEY || !env.PUBLIC_ORIGIN || !env.MAIL_FROM) {
+  if (!env.TURNSTILE_SECRET || !env.TURNSTILE_SITE_KEY || !env.PUBLIC_ORIGIN || !mailConfigured(env)) {
     return page('Sign-in unavailable', '<h1>Sign-in has not been configured</h1>', 503);
   }
   const retry = () => page('Verification required', '<h1>Could not verify your sign-in request</h1><p><a href="/login">Try signing in again</a></p>', 400);
@@ -74,10 +80,7 @@ async function requestLink(request: Request, env: AppEnv, form: URLSearchParams)
   const link = new URL('/auth/confirm', env.PUBLIC_ORIGIN);
   link.searchParams.set('token', raw);
   try {
-    await env.EMAIL.send({
-      from: env.MAIL_FROM, to: email, subject: 'Your sign-in link',
-      text: `Open this link within 15 minutes to sign in:\n${link.href}`,
-    });
+    await sendSignInMail(env, email, link);
   } catch {
     await env.DB.prepare('DELETE FROM login_challenges WHERE digest = ?').bind(hashed).run();
     console.error({ event: 'sign_in_email_failed' });
@@ -120,7 +123,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       const response = page('Sign in', (<>
         <section class="auth-panel" aria-labelledby="sign-in-title">
           <h1 id="sign-in-title">Sign in</h1>
-          <p>Use the email address on your invitation.</p>
+          <p>{openRegistration(env) ? 'Enter your email to sign in or create an account.' : 'Use the email address on your invitation.'}</p>
           <StackForm action="/auth/request">
             <label for="sign-in-email">Email address
               <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength={254} required />

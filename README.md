@@ -35,3 +35,13 @@ npx wrangler deploy --config wrangler.staging.jsonc --secrets-file /absolute/pat
 - Sign in as a second verified tester. Submit a story, reply, upvote the other member's content, and undo the vote.
 - Report a story as the tester, then hide and restore it from the admin queue. Check that the public discussion and search follow its visibility.
 - Wait for the next scheduled ranking refresh and verify the Top feed. Check that unlisted addresses receive the generic response without sending email.
+
+## Use Mailgun for sign-in email
+
+Workers and D1 still run on Cloudflare. With Mailgun enabled, the Worker sends sign-in emails through Mailgun.
+
+1. Verify a custom sending domain in Mailgun. Mailgun sandbox domains require authorized recipients.
+2. Set `MAIL_PROVIDER` to `mailgun`, `MAILGUN_DOMAIN` to the verified Mailgun domain, `MAILGUN_REGION` to `us` or `eu`, and `MAIL_FROM` to the Mailgun sender address. Remove the Cloudflare `send_email` binding from the Mailgun deployment config if it is no longer used.
+3. Store a Mailgun domain sending key using `npx wrangler secret put MAILGUN_API_KEY --config wrangler.staging.jsonc`.
+4. Keep `OPEN_REGISTRATION` set to `false` for invite-only sign-in. With Mailgun, invited recipients need no Cloudflare verification. Set it to `true` for public passwordless registration. Turnstile and sign-in rate limits apply to either mode.
+5. Redeploy and request a sign-in link. Confirm inbox delivery before changing production.

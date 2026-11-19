@@ -29,7 +29,11 @@
     "LOGIN_RECIPIENTS": "",
     "ADMIN_EMAIL": "",
     "TURNSTILE_SITE_KEY": "",
-    "SITE_NAME": "NoCoNews"
+    "SITE_NAME": "NoCoNews",
+    "MAIL_PROVIDER": "cloudflare",
+    "MAILGUN_DOMAIN": "",
+    "MAILGUN_REGION": "us",
+    "OPEN_REGISTRATION": "false"
   },
   "send_email": [
     {

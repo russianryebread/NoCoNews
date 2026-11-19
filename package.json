@@ -6,7 +6,7 @@
   "name": "noconews",
   "scripts": {
     "dev": "wrangler dev",
-    "check": "wrangler types && tsc",
+    "check": "wrangler types --strict-vars false && tsc",
     "db:local": "wrangler d1 migrations apply DB --local"
   },
   "dependencies": {
