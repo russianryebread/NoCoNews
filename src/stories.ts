@@ -58,5 +58,42 @@ export async function discussion(db: D1Database, id: number): Promise<Response> 
     .bind(id).first<Story>();
   if (!story) return page('Story not found', '<h1>Story not found</h1>', 404);
   const body = story.body ? `<p class="story-body">${escapeHtml(story.body)}</p>` : '';
-  return page(story.title, `<h1>Discussion</h1>${storyRow(story)}${body}`);
+  const { results } = await db.prepare(`SELECT c.id, c.parent_id, c.body, c.depth, c.state,
+    c.vote_count, c.edited_at, u.username FROM comments c JOIN users u ON u.id = c.author_id
+    WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(id).all<Comment>();
+  const comments = commentList(results.slice(0, 500));
+  return page(story.title, `<h1>Discussion</h1>${storyRow(story)}${body}<h2>Comments</h2>${comments}${results.length > 500 ? '<p>Only the first 500 comments are shown.</p>' : ''}`);
+}
+
+interface Comment {
+  id: number;
+  parent_id: number | null;
+  body: string;
+  state: 'visible' | 'hidden' | 'deleted';
+  vote_count: number;
+  edited_at: number | null;
+  username: string | null;
+}
+
+function commentList(comments: Comment[]): string {
+  const children = new Map<number | null, Comment[]>();
+  for (const comment of comments) {
+    const siblings = children.get(comment.parent_id) ?? [];
+    siblings.push(comment);
+    children.set(comment.parent_id, siblings);
+  }
+
+  function render(parent: number | null): string {
+    const siblings = children.get(parent);
+    if (!siblings?.length) return '';
+    return `<ol class="comments">${siblings.map(comment => {
+      const text = comment.state === 'visible'
+        ? `<div class="metadata">${escapeHtml(comment.username ?? 'member')} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}</div>
+           <div class="story-body">${escapeHtml(comment.body)}</div>`
+        : '<p class="metadata">[comment unavailable]</p>';
+      return `<li id="comment-${comment.id}">${text}${render(comment.id)}</li>`;
+    }).join('')}</ol>`;
+  }
+
+  return render(null) || '<p>No comments yet.</p>';
 }

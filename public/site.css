@@ -33,3 +33,9 @@ h1 { font-size: 1.125rem; }
 .headline { font-weight: 600; }
 .metadata { color: var(--muted); font-size: .8125rem; }
 .story-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+h2 { font-size: 1rem; }
+.comments { list-style: none; margin: 0; padding: 0; }
+.comments .comments { padding-inline-start: clamp(.25rem, 2vw, 1rem); }
+.comments li { margin-block-start: .65rem; }
+.comments :target { outline: 1px solid var(--accent); outline-offset: 3px; }
