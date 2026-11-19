@@ -39,3 +39,16 @@ export function brand(response: Response, siteName: string): Response {
     .on('title', { element(element) { element.append(` · ${siteName}`); } })
     .transform(response);
 }
+
+export function publisherLink(hostname: string | null): string {
+  if (!hostname) return '';
+  return `<span class="metadata">(<a href="/new?domain=${encodeURIComponent(hostname)}">${escapeHtml(hostname)}</a>)</span>`;
+}
+
+export function icon(name: 'comment' | 'report'): string {
+  const path = name === 'comment'
+    ? 'M3.5 3.5h13v9h-8l-4 3v-3h-1z'
+    : 'M5 17V3m0 1c4-3 6 2 11 0v8c-5 2-7-3-11 0';
+  return `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="none"
+    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+}

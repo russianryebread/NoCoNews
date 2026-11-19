@@ -2,7 +2,7 @@ import { reportLink } from './moderation';
 import type { Member } from './auth';
 import { commentForm, voteControl } from './participation';
 import { redirect } from './forms';
-import { escapeHtml, page } from './html';
+import { escapeHtml, icon, page, publisherLink } from './html';
 
 interface Story {
   author_id: number;
@@ -23,25 +23,30 @@ const storyColumns = `s.id, s.author_id, s.title, s.url, s.hostname, s.body, u.u
 
 function storyRow(story: Story, member: Member | null): string {
   const discussion = `/stories/${story.id}`;
-  const target = story.url ?? discussion;
+  const articleUrl = story.url ? URL.parse(story.url) : null;
+  const external = articleUrl && ['http:', 'https:'].includes(articleUrl.protocol);
+  const target = external ? articleUrl.href : discussion;
+  const comments = `${story.comment_count} ${story.comment_count === 1 ? 'comment' : 'comments'}`;
   const timestamp = new Date(story.created_at * 1000).toISOString();
 
   return `<article class="story">
   ${voteControl('stories', story.id, story.voted, Boolean(member?.username && member.id !== story.author_id))}
-  <a class="headline" href="${escapeHtml(target)}">${escapeHtml(story.title)}</a>
-  ${story.hostname ? `<span class="metadata">(${escapeHtml(story.hostname)})</span>` : ''}
+  <a class="headline" href="${escapeHtml(target)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(story.title)}</a>
+  ${publisherLink(story.hostname)}
   <div class="metadata">${story.vote_count} points · ${escapeHtml(story.username ?? 'member')} ·
   <time datetime="${timestamp}">${timestamp.slice(0, 10)}</time> ·
-  <a href="${discussion}">${story.comment_count} comments</a>${reportLink('story', story.id, member)}</div>
+  <a class="icon-link" href="${discussion}" aria-label="${comments}" title="${comments}">${icon('comment')}<span>${story.comment_count}</span></a>${reportLink('story', story.id, member)}</div>
 </article>`;
 }
 
 export async function feed(db: D1Database, url: URL, member: Member | null): Promise<Response> {
-  if (url.pathname === '/' && !url.searchParams.has('before')) {
+  const domain = url.searchParams.get('domain')?.trim().toLowerCase() || null;
+  if (domain && domain.length > 253) return page('Invalid domain', '<h1>Invalid domain filter</h1>', 400);
+  if (!domain && url.pathname === '/' && !url.searchParams.has('before')) {
     const ranked = await rankedFeed(db, url, member);
     if (ranked) return ranked;
   }
-  const title = url.pathname === '/' ? 'Top' : 'New';
+  const title = domain ?? (url.pathname === '/' ? 'Top' : 'New');
   const cursor = url.searchParams.get('before');
   const [time, id] = cursor?.split('.').map(Number) ?? [];
   if (cursor !== null && (!/^\d+\.\d+$/.test(cursor) || !Number.isSafeInteger(time) || !Number.isSafeInteger(id))) {
@@ -51,14 +56,20 @@ export async function feed(db: D1Database, url: URL, member: Member | null): Pro
   // Top uses the chronological fallback until the first ranking snapshot exists.
   const statement = db.prepare(`SELECT ${storyColumns}, EXISTS (SELECT 1 FROM story_votes v WHERE v.story_id = s.id AND v.user_id = ?) AS voted FROM stories s
     JOIN users u ON u.id = s.author_id WHERE s.state = 'visible'
+    ${domain ? 'AND s.hostname = ?' : ''}
     ${cursor === null ? '' : 'AND (s.created_at, s.id) < (?, ?)'}
     ORDER BY s.created_at DESC, s.id DESC LIMIT 31`);
-  const { results } = await (cursor === null ? statement.bind(member?.id ?? null) : statement.bind(member?.id ?? null, time, id)).all<Story>();
+  const bindings: (string | number | null)[] = [member?.id ?? null];
+  if (domain) bindings.push(domain);
+  if (cursor !== null) bindings.push(time, id);
+  const { results } = await statement.bind(...bindings).all<Story>();
   const last = results[29];
+  const params = last ? new URLSearchParams({ before: `${last.created_at}.${last.id}` }) : null;
+  if (params && domain) params.set('domain', domain);
   const next = results.length > 30
-    ? `<p><a href="${url.pathname}?before=${last.created_at}.${last.id}">More</a></p>`
+    ? `<p><a href="${escapeHtml(url.pathname)}?${escapeHtml(params)}">More</a></p>`
     : '';
-  return page(title, `<h1>${title}</h1>${results.length
+  return page(title, `<h1>${escapeHtml(title)}</h1>${domain ? '<p class="metadata"><a href="/new">All domains</a></p>' : ''}${results.length
     ? results.slice(0, 30).map(story => storyRow(story, member)).join('')
     : '<p>No stories yet.</p>'}${next}`);
 }

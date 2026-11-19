@@ -1,4 +1,4 @@
-import { escapeHtml, page } from './html';
+import { escapeHtml, page, publisherLink } from './html';
 
 interface Match {
   story_id: number;
@@ -50,7 +50,7 @@ export async function search(db: D1Database, url: URL): Promise<Response> {
       ? `${discussion}?comment=${match.comment_id}#comment-${match.comment_id}`
       : discussion;
     return `<article class="story"><a class="headline" href="${target}">${escapeHtml(match.title)}</a>
-      ${match.hostname ? `<span class="metadata">(${escapeHtml(match.hostname)})</span>` : ''}
+      ${publisherLink(match.hostname)}
       ${match.excerpt ? `<div class="metadata">${escapeHtml(match.excerpt)}</div>` : ''}</article>`;
   });
   const link = (number: number, label: string) =>

@@ -104,3 +104,20 @@ form:not(.inline) button:hover { background: #e7ebe3; }
   .auth-panel { padding: .75rem; }
   .auth-panel .cf-turnstile { width: calc(100% + 1rem); margin-inline: -.5rem; }
 }
+
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .2rem;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  border-radius: .25rem;
+  vertical-align: middle;
+  color: var(--muted);
+  text-decoration: none;
+}
+.icon-link:hover, .icon-link:focus-visible { color: #176549; background: #e8eee7; }
+.report-link:hover, .report-link:focus-visible { color: #a13f2b; background: #f6ece6; }
+.comment-form { width: min(100%, 32rem); }
+.comment-form button { justify-self: end; }

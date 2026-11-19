@@ -10,7 +10,7 @@ export function voteControl(kind: 'stories' | 'comments', id: number, voted: num
 }
 
 export function commentForm(story: number, parent?: number): string {
-  return `<form class="stack" method="post" action="/stories/${story}/comments">
+  return `<form class="stack comment-form" method="post" action="/stories/${story}/comments">
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
     ${parent ? `<input type="hidden" name="parent" value="${parent}">` : ''}
     <label>${parent ? 'Reply' : 'Comment'} <textarea name="body" maxlength="10000" required rows="3"></textarea></label>
