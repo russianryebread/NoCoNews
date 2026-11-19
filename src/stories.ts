@@ -22,7 +22,7 @@ interface Story {
 const storyColumns = `s.id, s.author_id, s.title, s.url, s.hostname, s.body, u.username,
   s.created_at, s.vote_count, s.comment_count`;
 
-function storyRow(story: Story, member: Member | null): string {
+function storyRow(story: Story, member: Member | null, heading = false): string {
   const discussion = `/stories/${story.id}`;
   const articleUrl = story.url ? URL.parse(story.url) : null;
   const external = articleUrl && ['http:', 'https:'].includes(articleUrl.protocol);
@@ -30,13 +30,16 @@ function storyRow(story: Story, member: Member | null): string {
   const comments = `${story.comment_count} ${story.comment_count === 1 ? 'comment' : 'comments'}`;
   const timestamp = new Date(story.created_at * 1000).toISOString();
 
-  return `<article class="story">
-  ${voteControl('stories', story.id, story.voted, Boolean(member?.username && member.id !== story.author_id))}
-  <a class="headline" href="${escapeHtml(target)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(story.title)}</a>
-  ${publisherLink(story.hostname)}
-  <div class="metadata">${story.vote_count} points · ${authorLink(story.username)} ·
+  const headline = heading && !external ? escapeHtml(story.title)
+    : `<a class="headline" href="${escapeHtml(target)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(story.title)}</a>`;
+  const vote = voteControl('stories', story.id, story.voted, Boolean(member?.username && member.id !== story.author_id));
+  const publisher = publisherLink(story.hostname);
+
+  return `<article class="story${heading ? ' discussion-story' : ''}">
+  ${heading ? `<h1>${headline}</h1>` : `${vote}${headline} ${publisher}`}
+  <div class="metadata">${heading ? `${vote}${publisher ? publisher + ' · ' : ''}` : ''}${story.vote_count} points · ${authorLink(story.username)} ·
   <time datetime="${timestamp}">${timestamp.slice(0, 10)}</time> ·
-  <a class="icon-link" href="${discussion}" aria-label="${comments}" title="${comments}">${icon('comment')}<span>${story.comment_count}</span></a>${reportLink('story', story.id, member)}</div>
+  <a class="icon-link" href="${discussion}${heading ? '#comments' : ''}" aria-label="${comments}" title="${comments}">${icon('comment')}<span>${story.comment_count}</span></a>${reportLink('story', story.id, member)}</div>
 </article>`;
 }
 
@@ -107,6 +110,7 @@ export async function discussion(db: D1Database, id: number, focus: string | nul
     .bind(member?.id ?? null, id).first<Story>();
   if (!story) return page('Story not found', '<h1>Story not found</h1>', 404);
   const body = story.body ? `<div class="markdown">${renderMarkdown(story.body)}</div>` : '';
+  const intro = `<p class="discussion-back"><a href="/">‹ Top</a></p>${storyRow(story, member, true)}${body}`;
   if (focus && /^\d+$/.test(focus) && Number.isSafeInteger(Number(focus))) {
     const { results } = await db.prepare(`WITH RECURSIVE ancestors(id, parent_id) AS (
        SELECT id, parent_id FROM comments WHERE story_id = ? AND id = ? AND state = 'visible'
@@ -119,8 +123,9 @@ export async function discussion(db: D1Database, id: number, focus: string | nul
     FROM ancestors a JOIN comments c ON c.id = a.id JOIN users u ON u.id = c.author_id`)
       .bind(id, Number(focus), id, member?.id ?? null).all<Comment>();
     if (!results.length) return page('Comment not found', '<h1>Comment not found</h1>', 404);
-    return page(story.title, `<h1>Discussion</h1>${storyRow(story, member)}${body}
-      <p><a href="/stories/${id}">Full discussion</a></p>${commentList(results, id, member)}`);
+    return page(story.title, `${intro}<section class="discussion-thread" aria-labelledby="thread-title">
+      <h2 id="thread-title">Comment thread</h2><p><a href="/stories/${id}#comments">Full discussion</a></p>
+      ${commentList(results, id, member)}</section>`);
   }
 
   const { results } = await db.prepare(`SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, c.state,
@@ -128,7 +133,10 @@ export async function discussion(db: D1Database, id: number, focus: string | nul
     EXISTS (SELECT 1 FROM comment_votes v WHERE v.comment_id = c.id AND v.user_id = ?) AS voted FROM comments c JOIN users u ON u.id = c.author_id
     WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(member?.id ?? null, id).all<Comment>();
   const comments = commentList(results.slice(0, 500), id, member);
-  return page(story.title, `<h1>Discussion</h1>${storyRow(story, member)}${body}<h2>Comments</h2>${member?.username ? commentForm(id) : '<p><a href="/account">Sign in to comment</a></p>'}${comments}${results.length > 500 ? '<p>Only the first 500 comments are shown.</p>' : ''}`);
+  return page(story.title, `${intro}<section class="discussion-thread" id="comments" aria-labelledby="thread-title">
+    <h2 id="thread-title">${story.comment_count} ${story.comment_count === 1 ? 'comment' : 'comments'}</h2>
+    ${member?.username ? commentForm(id) : '<p><a href="/account">Sign in to comment</a></p>'}
+    ${comments}${results.length > 500 ? '<p>Only the first 500 comments are shown.</p>' : ''}</section>`);
 }
 
 interface Comment {

@@ -11,13 +11,13 @@ export function voteControl(kind: 'stories' | 'comments', id: number, voted: num
 
 export function commentForm(story: number, parent?: number): string {
   const fieldId = parent ? `reply-${parent}-body` : 'comment-body';
-  return `<form class="stack markdown-form editor-panel comment-form" method="post" action="/stories/${story}/comments">
+  return `<form class="stack markdown-form comment-form${parent ? ' reply-form' : ''}" method="post" action="/stories/${story}/comments">
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
     ${parent ? `<input type="hidden" name="parent" value="${parent}">` : ''}
     <div class="markdown-field">
-      <label for="${fieldId}">${parent ? 'Reply' : 'Comment'}</label>
-      <textarea id="${fieldId}" name="body" maxlength="10000" aria-describedby="${fieldId}-format" required rows="3"></textarea>
-      <small class="metadata" id="${fieldId}-format">Basic Markdown supported.</small>
+      <label for="${fieldId}">${parent ? 'Write a reply' : 'Add a comment'}</label>
+      <textarea id="${fieldId}" name="body" maxlength="10000" ${parent ? 'rows="2"' : `aria-describedby="${fieldId}-format" rows="3"`} required></textarea>
+      ${parent ? '' : `<small class="metadata" id="${fieldId}-format">Basic Markdown supported.</small>`}
     </div>
     <button>Post ${parent ? 'reply' : 'comment'}</button></form>`;
 }
