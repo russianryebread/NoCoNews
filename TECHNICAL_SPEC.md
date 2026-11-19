@@ -29,7 +29,7 @@ Platform references. [Workers Static Assets](https://developers.cloudflare.com/w
 
 ## User workflows
 
-- **Feeds.** The home page shows Top, with New available as a separate route. Each row shows the title, publisher domain for links, author, age, vote count, and discussion link. Use 30 stories per page and stable continuation cursors.
+- **Feeds.** The home page shows Top, with New available as a separate route. Each row shows the title, publisher domain for links, author, age, vote count, and discussion link. Publisher domains open exact-host chronological filters. Article headlines open the publisher in a new tab. Text posts open the discussion in the current tab. Use 30 stories per page and stable continuation cursors.
 - **Guidelines.** Administrators can edit and publish plain-text community guidelines, with examples of on-topic and off-topic submissions. Show the latest published guidelines on a public page and link to it from the submission form. Audit edits with the actor and timestamp. Moderators use those guidelines when reviewing reports.
 - **Submission.** Require a title and either a link or a text body. Allow HTTP and HTTPS links, reject embedded credentials, and enforce length limits. Canonicalize by dropping fragments and known tracking parameters while preserving other URL semantics. If the same canonical URL already has a visible submission, link to that discussion. Enforce uniqueness in D1 for visible links so simultaneous requests converge on one submission. For a match against a hidden story, do not disclose the hidden record to the submitter.
 - **Voting.** A verified member can set or remove one upvote per submitted article, text story, or comment. Authors cannot vote on their own content. Each score starts at zero and reflects active votes. Show the member's current vote state and the committed count in the response. Story votes affect Top. Comment votes display beside each comment and preserve chronological sibling order. Require a visible target and, for comment votes, a visible parent story.
@@ -43,6 +43,8 @@ Use the reference's compact list rhythm, short text navigation, and quiet metada
 
 Keep navigation, pagination, voting, reply, and report controls small and muted. Use a compact triangle button for an upvote and a clear pressed state with an accessible label for undo. Give compact controls adequate hit areas or spacing, visible keyboard focus, and sufficient contrast. Search uses a labeled single-line input and compact submit button. Render all pages and forms in the Worker with HTML templates. Svelte is a visual reference only. JavaScript can update vote state in place, and ordinary form submissions support the same flow.
 
+Comment and report links use compact, labeled icons that gain color on hover and keyboard focus. Comment and reply submit buttons align with the right edge of their fields. Author links open public profiles. Members can add or clear a plain-text bio of up to 280 characters on their own profile.
+
 ## Data and consistency
 
 Store timestamps in UTC and use foreign keys, database checks, and prepared statements. Start with D1 primary reads to simplify read-after-write behavior.
@@ -50,7 +52,7 @@ Store timestamps in UTC and use foreign keys, database checks, and prepared stat
 | Table | Key fields and invariants |
 | --- | --- |
 | `community_settings` | Published guidelines, last editor, and update time |
-| `users` | ID, normalized unique email and username, public display username, role, account state, created time |
+| `users` | ID, normalized unique email and username, public display username and bio, role, account state, created time |
 | `login_challenges`, `sessions` | Hashed random token, expiry, consumption or revocation time, user or email association |
 | `stories` | ID, author, title, URL and canonical URL or text body, state, creation time, vote count, visible comment count |
 | `comments` | ID, story, optional parent, author, body, depth, state, vote count, creation and edit times. Composite parent reference enforces same-story replies |
@@ -83,6 +85,7 @@ Update both indexes with D1 triggers in the same transaction as content changes.
 | --- | --- |
 | `GET /`, `GET /new` | Ranked and chronological feeds |
 | `GET /stories/:id`, `GET /users/:username` | Discussion and public profile |
+| `POST /users/:username` | Edit your own public bio |
 | `GET /search?q=…&type=…&page=…` | Server-rendered keyword search and pagination |
 | `GET /guidelines`, `POST /admin/guidelines` | View community guidelines or publish an admin edit |
 | `GET /submit`, `POST /stories` | Submission form and creation |

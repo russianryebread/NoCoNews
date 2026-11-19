@@ -1,5 +1,5 @@
 import { cookieValue, InvalidForm, readForm, redirect } from './forms';
-import { escapeHtml, page } from './html';
+import { authorLink, escapeHtml, page } from './html';
 
 const sessionCookie = '__Host-session';
 const confirmCookie = '__Host-confirm';
@@ -147,7 +147,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       if (!member) return redirect('/login');
       return page('Account', `<h1>Account</h1>${url.searchParams.has('reported') ? '<p>Report received.</p>' : ''}
         ${member.role !== 'member' ? '<p><a href="/moderation/reports">Moderation queue</a></p>' : ''}
-        ${member.username ? `<p>${escapeHtml(member.username)}</p>` :
+        ${member.username ? `<p>${authorLink(member.username)} · <a href="/users/${encodeURIComponent(member.username)}">Edit bio</a></p>` :
         '<form class="stack" method="post" action="/account"><label>Username <input name="username" required maxlength="24"></label> <button>Save</button></form>'}
         <form method="post" action="/auth/logout"><button>Sign out</button></form>`);
     }

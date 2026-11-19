@@ -2,7 +2,7 @@ import { reportLink } from './moderation';
 import type { Member } from './auth';
 import { commentForm, voteControl } from './participation';
 import { redirect } from './forms';
-import { escapeHtml, icon, page, publisherLink } from './html';
+import { authorLink, escapeHtml, icon, page, publisherLink } from './html';
 
 interface Story {
   author_id: number;
@@ -33,7 +33,7 @@ function storyRow(story: Story, member: Member | null): string {
   ${voteControl('stories', story.id, story.voted, Boolean(member?.username && member.id !== story.author_id))}
   <a class="headline" href="${escapeHtml(target)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(story.title)}</a>
   ${publisherLink(story.hostname)}
-  <div class="metadata">${story.vote_count} points · ${escapeHtml(story.username ?? 'member')} ·
+  <div class="metadata">${story.vote_count} points · ${authorLink(story.username)} ·
   <time datetime="${timestamp}">${timestamp.slice(0, 10)}</time> ·
   <a class="icon-link" href="${discussion}" aria-label="${comments}" title="${comments}">${icon('comment')}<span>${story.comment_count}</span></a>${reportLink('story', story.id, member)}</div>
 </article>`;
@@ -156,7 +156,7 @@ function commentList(comments: Comment[], story: number, member: Member | null):
     if (!siblings?.length) return '';
     return `<ol class="comments">${siblings.map(comment => {
       const text = comment.state === 'visible'
-        ? `<div class="metadata">${voteControl('comments', comment.id, comment.voted, Boolean(member?.username && member.id !== comment.author_id))} ${escapeHtml(comment.username ?? 'member')} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}${reportLink('comment', comment.id, member)}</div>
+        ? `<div class="metadata">${voteControl('comments', comment.id, comment.voted, Boolean(member?.username && member.id !== comment.author_id))} ${authorLink(comment.username)} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}${reportLink('comment', comment.id, member)}</div>
            <div class="story-body">${escapeHtml(comment.body)}</div>
            ${member?.username && comment.depth < 8 ? `<details><summary>Reply</summary>${commentForm(story, comment.id)}</details>` : ''}`
         : '<p class="metadata">[comment unavailable]</p>';

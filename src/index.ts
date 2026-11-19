@@ -1,3 +1,4 @@
+import { profile } from './profiles';
 import { moderation } from './moderation';
 import { refreshRanking } from './ranking';
 import { participation } from './participation';
@@ -22,6 +23,8 @@ async function route(request: Request, env: AppEnv): Promise<Response> {
   try {
     const account = await auth(request, env, url);
     if (account) return account;
+    const userProfile = await profile(request, env.DB, pathname);
+    if (userProfile) return userProfile;
     const action = await participation(request, env.DB, url);
     if (action) return action;
     const review = await moderation(request, env.DB, url);

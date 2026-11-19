@@ -52,3 +52,13 @@ export function icon(name: 'comment' | 'report'): string {
   return `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="none"
     stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
 }
+
+export function profileLink(username: string): string {
+  return `/users/${encodeURIComponent(username)}`;
+}
+
+export function authorLink(username: string | null): string {
+  return username
+    ? `<a href="${profileLink(username)}">${escapeHtml(username)}</a>`
+    : 'member';
+}
