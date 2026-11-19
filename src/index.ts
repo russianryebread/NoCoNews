@@ -1,3 +1,5 @@
+import { auth, type AppEnv } from './auth';
+import { InvalidForm } from './forms';
 import { search } from './search';
 import { page } from './html';
 import { discussion, feed } from './stories';
@@ -6,11 +8,13 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const { pathname } = url;
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
-    }
-
     try {
+      const account = await auth(request, env, url);
+      if (account) return account;
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
+      }
+
       if (pathname === '/' || pathname === '/new') return await feed(env.DB, url);
 
       const story = /^\/stories\/(\d+)$/.exec(pathname);
@@ -20,9 +24,10 @@ export default {
 
       if (pathname === '/search') return await search(env.DB, url);
       return page('Not found', '<h1>Page not found</h1>', 404);
-    } catch {
+    } catch (error) {
+      if (error instanceof InvalidForm) return page('Invalid request', '<h1>Invalid request</h1>', 400);
       console.error({ event: 'page_query_failed' });
       return page('Unavailable', '<h1>Temporarily unavailable</h1>', 503);
     }
   },
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<AppEnv>;

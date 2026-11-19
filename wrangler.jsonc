@@ -3,8 +3,46 @@
   "name": "noconews",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-19",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": { "directory": "./public" },
-  "d1_databases": [{ "binding": "DB", "database_name": "noconews-local", "database_id": "00000000-0000-0000-0000-000000000001" }],
-  "observability": { "enabled": true, "head_sampling_rate": 0.1, "logs": { "invocation_logs": false } }
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "./public"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "noconews-local",
+      "database_id": "00000000-0000-0000-0000-000000000001"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "logs": {
+      "invocation_logs": false
+    }
+  },
+  "vars": {
+    "PUBLIC_ORIGIN": "",
+    "MAIL_FROM": "",
+    "LOGIN_RECIPIENTS": "",
+    "ADMIN_EMAIL": "",
+    "TURNSTILE_SITE_KEY": ""
+  },
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "LOGIN_LIMIT",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    }
+  ]
 }
