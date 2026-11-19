@@ -184,3 +184,10 @@ form .markdown-field textarea {
 .discussion-thread summary { width: fit-content; margin-top: .25rem; }
 .discussion-thread .reply-form { gap: .4rem; margin-block: .25rem .65rem; }
 .discussion-thread .reply-form label { font-size: .8125rem; }
+
+/* Keep editable fields at the iOS focus-zoom threshold without restricting page zoom. */
+@media (pointer: coarse), (max-width: 600px) {
+  form input:not([type="hidden"]), form textarea, form select {
+    font-size: max(16px, 1rem);
+  }
+}
