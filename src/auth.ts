@@ -115,11 +115,16 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
   if (request.method === 'GET') {
     if (url.pathname === '/login') {
       if (!env.TURNSTILE_SITE_KEY) return page('Sign in', '<h1>Sign in</h1><p>Sign-in is not configured yet.</p>', 503);
-      const response = page('Sign in', `<h1>Sign in</h1><p>Use the email address on your invitation.</p>
-        <form method="post" action="/auth/request">
-        <label>Email <input type="email" name="email" maxlength="254" required></label>
-        <div class="cf-turnstile" data-sitekey="${escapeHtml(env.TURNSTILE_SITE_KEY)}"></div>
-        <button>Send link</button></form>
+      const response = page('Sign in', `<section class="auth-panel" aria-labelledby="sign-in-title">
+        <h1 id="sign-in-title">Sign in</h1>
+        <p>Use the email address on your invitation.</p>
+        <form class="stack" method="post" action="/auth/request">
+          <label for="sign-in-email">Email address
+            <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength="254" required>
+          </label>
+          <div class="cf-turnstile" data-size="flexible" data-sitekey="${escapeHtml(env.TURNSTILE_SITE_KEY)}"></div>
+          <button class="primary">Send sign-in link</button>
+        </form></section>
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`);
       response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') +
         "; script-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com");
@@ -130,7 +135,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       if (!/^[a-f0-9-]{72}$/.test(raw)) throw new InvalidForm();
       const csrf = token();
       const response = page('Confirm sign-in', `<h1>Confirm sign-in</h1>
-        <form method="post" action="/auth/confirm">
+        <form class="stack" method="post" action="/auth/confirm">
         <input type="hidden" name="token" value="${escapeHtml(raw)}">
         <input type="hidden" name="csrf" value="${csrf}">
         <button>Sign in</button></form>`);
@@ -143,7 +148,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       return page('Account', `<h1>Account</h1>${url.searchParams.has('reported') ? '<p>Report received.</p>' : ''}
         ${member.role !== 'member' ? '<p><a href="/moderation/reports">Moderation queue</a></p>' : ''}
         ${member.username ? `<p>${escapeHtml(member.username)}</p>` :
-        '<form method="post" action="/account"><label>Username <input name="username" required maxlength="24"></label> <button>Save</button></form>'}
+        '<form class="stack" method="post" action="/account"><label>Username <input name="username" required maxlength="24"></label> <button>Save</button></form>'}
         <form method="post" action="/auth/logout"><button>Sign out</button></form>`);
     }
   }
