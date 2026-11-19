@@ -4,9 +4,9 @@
 
 ## Product scope
 
-NoCoNews is a community news aggregator where readers submit links, vote, discuss stories, and report problems. The working assumption is a Northern Colorado focus based on the project name. Readers can browse anonymously. Verified members can submit links or text discussions, reply, upvote stories and comments, and report. Moderators review reports and enforce community rules.
+NoCoNews is a community news aggregator where readers submit links, vote, discuss stories, and report problems. Deploy one Worker and D1 database per community per environment. Each installation configures its site name and domain. The initial installation serves Northern Colorado. Readers can browse anonymously. Verified members can submit links or text discussions, reply, upvote stories and comments, and report. Moderators review reports and enforce community rules.
 
-The first release includes ranked and chronological feeds, story discussions, full-text search, public usernames, and a private moderation queue. “Submission reports” means member reports about submitted stories. The same workflow supports comment reports. Automated RSS ingestion, downvotes, notifications, and media uploads are deferred.
+The first release includes ranked and chronological feeds, story discussions, full-text search, public usernames, and a private moderation queue. “Submission reports” means member reports about submitted stories. The same workflow supports comment reports. Launch uses manual submissions. Automated RSS ingestion, downvotes, notifications, media uploads, and report exports are deferred.
 
 ## Cloudflare architecture
 
@@ -18,27 +18,28 @@ The first release includes ranked and chronological feeds, story discussions, fu
 | Application state | One D1 database per environment |
 | Scheduled work | Worker Cron Triggers for ranking snapshots and bounded cleanup |
 | Abuse controls | Turnstile, Workers Rate Limiting, and application-level controls |
-| Sign-in email | Cloudflare Email Service Workers binding, using a verified sending domain |
+| Sign-in email | Cloudflare Email Routing Workers binding, restricted to account-verified destination addresses |
 | Telemetry and recovery | Workers Logs, D1 query metrics, and D1 Time Travel |
 
 The browser talks to the Worker on the site domain. The Worker reads and writes through Cloudflare bindings. A story click navigates directly to the publisher. The Worker derives the displayed hostname from the submitted URL and does not fetch publisher pages or embed their resources. Production needs no external application host, database, identity provider, email vendor, or asset CDN. Recipient mailboxes and linked publishers are outside the app's infrastructure boundary.
 
-Use Workers Paid for public transactional email. Cloudflare documents Email Sending as beta, so staging must confirm arbitrary-recipient access, sending quotas, and delivery to representative inboxes before launch. If it is unavailable in the account, public launch is blocked pending a revised sign-in decision that preserves the Cloudflare-only requirement.
+Use Cloudflare free-tier services for launch. Browsing is public and participation is limited to invited members. An operator verifies each recipient address in the Cloudflare account and adds it to the deployment’s sign-in allowlist. The Worker sends passwordless links only to allowlisted addresses that Cloudflare has verified. Staging uses its own allowlist of designated test recipients. [Verified destination addresses](https://developers.cloudflare.com/email-routing/setup/email-routing-addresses/)
 
-Platform references. [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/) · [Workers Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/) · [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) · [Cloudflare Email Service](https://developers.cloudflare.com/email-service/) · [Sending email setup](https://developers.cloudflare.com/email-service/get-started/send-emails/)
+Platform references. [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/) · [Workers Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/) · [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) · [Cloudflare Email Service](https://developers.cloudflare.com/email-service/) · [Email Routing Workers binding](https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/)
 
 ## User workflows
 
 - **Feeds.** The home page shows Top, with New available as a separate route. Each row shows the title, publisher domain for links, author, age, vote count, and discussion link. Use 30 stories per page and stable continuation cursors.
+- **Guidelines.** Administrators can edit and publish plain-text community guidelines, with examples of on-topic and off-topic submissions. Show the latest published guidelines on a public page and link to it from the submission form. Audit edits with the actor and timestamp. Moderators use those guidelines when reviewing reports.
 - **Submission.** Require a title and either a link or a text body. Allow HTTP and HTTPS links, reject embedded credentials, and enforce length limits. Canonicalize by dropping fragments and known tracking parameters while preserving other URL semantics. If the same canonical URL already has a visible submission, link to that discussion. Enforce uniqueness in D1 for visible links so simultaneous requests converge on one submission. For a match against a hidden story, do not disclose the hidden record to the submitter.
 - **Voting.** A verified member can set or remove one upvote per submitted article, text story, or comment. Authors cannot vote on their own content. Each score starts at zero and reflects active votes. Show the member's current vote state and the committed count in the response. Story votes affect Top. Comment votes display beside each comment and preserve chronological sibling order. Require a visible target and, for comment votes, a visible parent story.
 - **Discussion.** Support threaded replies with a maximum depth of eight, capped body lengths, and pagination for root comments and large reply groups. Order siblings by creation time and ID. Render escaped plain text with safe linkification. Author deletion leaves a tombstone when needed to retain reply context. Comment edits display an edited marker.
-- **Reports.** Members can report stories or comments for spam, abuse, duplicate content, off-topic content, or another reason with an optional note. Accept one open report per member per target. Give the reporter a private acknowledgment. A report does not change visibility on its own.
+- **Reports.** Members can report stories or comments for spam, abuse, duplicate content, off-topic content, or another reason with an optional note. Accept one open report per member per target. Give the reporter a private acknowledgment and route the flag to the in-app moderation queue for review. A report does not change visibility on its own.
 - **Moderation.** Group open reports by target. Show reasons, notes, and prior actions to moderators. Support dismissal, hiding and restoring content, and account suspension. Record actor, action, target, reason, and time. Recompute visible results immediately on the next read, including when a story appears in an older ranking snapshot. Hide a story and its discussion from public routes together. For hidden comments, retain a placeholder so visible replies remain readable. Suspended accounts lose mutation access immediately.
 
 ## Interface and visual design
 
-Use the reference's compact list rhythm, short text navigation, and quiet metadata hierarchy as inspiration. Give NoCoNews its own typography, spacing, and restrained accent color. Render a narrow, responsive, single-column layout. Put headlines first, followed by a smaller line for domain, author, age, points, and discussion. Search results reuse the same rows and add short plain-text excerpts where applicable. Indent replies subtly and cap visual indentation on narrow screens. [Svelte Hacker News reference](https://hn.svelte.dev)
+Use the reference's compact list rhythm, short text navigation, and quiet metadata hierarchy as inspiration. Give the site its own typography, spacing, and restrained accent color. Render a narrow, responsive, single-column layout. Put headlines first, followed by a smaller line for domain, author, age, points, and discussion. Search results reuse the same rows and add short plain-text excerpts where applicable. Indent replies subtly and cap visual indentation on narrow screens. [Svelte Hacker News reference](https://hn.svelte.dev)
 
 Keep navigation, pagination, voting, reply, and report controls small and muted. Use a compact triangle button for an upvote and a clear pressed state with an accessible label for undo. Give compact controls adequate hit areas or spacing, visible keyboard focus, and sufficient contrast. Search uses a labeled single-line input and compact submit button. Render all pages and forms in the Worker with HTML templates. Svelte is a visual reference only. JavaScript can update vote state in place, and ordinary form submissions support the same flow.
 
@@ -48,6 +49,7 @@ Store timestamps in UTC and use foreign keys, database checks, and prepared stat
 
 | Table | Key fields and invariants |
 | --- | --- |
+| `community_settings` | Published guidelines, last editor, and update time |
 | `users` | ID, normalized unique email and username, public display username, role, account state, created time |
 | `login_challenges`, `sessions` | Hashed random token, expiry, consumption or revocation time, user or email association |
 | `stories` | ID, author, title, URL and canonical URL or text body, state, creation time, vote count, visible comment count |
@@ -82,6 +84,7 @@ Update both indexes with D1 triggers in the same transaction as content changes.
 | `GET /`, `GET /new` | Ranked and chronological feeds |
 | `GET /stories/:id`, `GET /users/:username` | Discussion and public profile |
 | `GET /search?q=…&type=…&page=…` | Server-rendered keyword search and pagination |
+| `GET /guidelines`, `POST /admin/guidelines` | View community guidelines or publish an admin edit |
 | `GET /submit`, `POST /stories` | Submission form and creation |
 | `POST /stories/:id/vote`, `POST /comments/:id/vote` | Explicit voted or unvoted state for the target |
 | `POST /stories/:id/comments` | Add root comment or reply |
@@ -92,14 +95,14 @@ Update both indexes with D1 triggers in the same transaction as content changes.
 
 HTML forms work without JavaScript and use post-redirect-get on success. Enhanced votes may request JSON on the same route. Return field errors for invalid submissions, 403 for unauthorized mutations, 404 for inaccessible resources on public routes, 409 for state conflicts, and 429 with retry guidance for rate limits.
 
-Sign in with a 15-minute single-use email link. Keep the GET confirmation inert so mail scanners do not consume it. Consume the token and create the session in one atomic operation after explicit confirmation. First sign-in prompts for a unique username before participation. Store session token hashes in D1 and issue a Secure, HttpOnly, SameSite=Lax host-only cookie. Use a 30-day absolute session lifetime as a starting value. Logout revokes the session. Authorize moderator requests against the current database role on every request. Bootstrap the first admin through an audited deployment procedure. Require fresh sign-in for administrator role changes.
+Sign in with a 15-minute single-use email link. Keep the GET confirmation inert so mail scanners do not consume it. Consume the token and create the session in one atomic operation after explicit confirmation. First sign-in prompts for a unique username before participation. Store session token hashes in D1 and issue a Secure, HttpOnly, SameSite=Lax host-only cookie. Use a 30-day absolute session lifetime as a starting value. Logout revokes the session. Authorize moderator requests against the current database role on every request. Configure the bootstrap address per environment through the `ADMIN_EMAIL` variable. Verify and allowlist it before onboarding. Grant the first admin role only after the user confirms a sign-in link sent to that address. Make the initial grant one-time and atomic with its audit record. Require fresh sign-in for administrator role changes.
 
 ## Security and abuse
 
 - Validate same-origin requests and CSRF tokens for mutations, including sign-in confirmation. Bind pre-session confirmation CSRF state to the browser. Apply restrictive CSP, clickjacking protection, and a no-referrer policy to sign-in pages. Keep complete sign-in URLs and email addresses out of application telemetry.
 - Require and validate Turnstile server-side for email requests. Apply additional challenges to posting or reporting when abuse thresholds are crossed. Return a generic email-request result to limit account enumeration. Use rate limits by IP and account, plus durable per-recipient email cooldowns and quotas in D1. Workers Rate Limiting is location-local and eventually consistent. D1 constraints enforce any hard global caps.
 - Render untrusted content as escaped text and restrict generated link schemes. Enforce field and request-size limits before writing. Send private responses with `Cache-Control: no-store`. Start with caching for fingerprinted assets only, keeping public HTML dynamic so moderation and personalized vote state take effect on the next read.
-- Restrict reports, notes, and audit details to moderators. Use a documented retention period for resolved report notes and moderation history. Clean up expired sessions, sign-in challenges, and request keys in capped cron batches.
+- Restrict reports, notes, and audit details to moderators. Record retention periods for resolved report notes and moderation history in the deployment runbook before launch. Clean up expired sessions, sign-in challenges, and request keys in capped cron batches.
 
 Cloudflare references. [Turnstile server-side validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/) · [Workers Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
 
@@ -111,15 +114,7 @@ Track Worker errors and latency, D1 rows read and written, slow queries, email s
 
 ## Delivery sequence and acceptance
 
-1. Stand up staging, domains, D1 migrations, and sign-in. Verify delivery, token expiry and single use, logout, and role enforcement.
+1. Stand up staging, domains, D1 migrations, and sign-in. Verify delivery to account-verified recipients, rejection of unlisted recipients without sending mail, one-time admin provisioning, token expiry and single use, logout, and role enforcement.
 2. Build submissions, New, Top, threaded comments, voting on both target types, and search. Verify duplicate handling, parallel vote retries and undo on both targets, self-vote rejection, thread pagination, snapshot rollover, search routing and relevance, and forms without JavaScript.
-3. Add reports and moderation. Verify report privacy, moderator authorization, atomic audit writes, and immediate hide and restore behavior across public feeds, discussions, and search. Verify that hidden stories never expose comment excerpts and that edited or deleted comments do not expose stale text.
+3. Add community guidelines, reports, and moderation. Verify audited guideline updates without a redeploy, report privacy, moderator authorization, atomic audit writes, and immediate hide and restore behavior across public feeds, discussions, and search. Verify that hidden stories never expose comment excerpts and that edited or deleted comments do not expose stale text.
 4. Run production-like smoke, load, and recovery tests. Initial staging target is p95 server response under 500 ms for feed and discussion reads at 25 requests per second from a US test client with 50,000 stories. Treat this as a launch test target and revise it after measuring representative D1 latency. Exercise search with common terms and both result types on a representative corpus. Verify keyboard focus, control contrast and hit areas, and readable threads on narrow screens.
-
-## Decisions for review
-
-- Confirm the Northern Colorado focus and what qualifies as off-topic.
-- Confirm that member flags meet the submission reports requirement and whether moderators need exports.
-- Confirm that manual submission is sufficient for launch or identify any RSS sources that need automated ingestion.
-- Confirm passwordless email and the Workers Paid budget, including use of Cloudflare's beta email service.
-- Identify the first administrator and moderation coverage. Agree on retention periods for report notes and audit history before launch.
