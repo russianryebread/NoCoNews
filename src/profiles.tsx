@@ -1,7 +1,8 @@
-import { renderMarkdown } from './markdown';
+import { MarkdownBody } from './components/content';
+import { MarkdownField, StackForm } from './components/form';
 import { currentMember } from './auth';
 import { readForm, redirect } from './forms';
-import { escapeHtml, page, profileLink } from './html';
+import { page, profileLink } from './html';
 
 interface PublicProfile {
   id: number;
@@ -10,17 +11,16 @@ interface PublicProfile {
 }
 
 function profilePage(profile: PublicProfile, own: boolean, error = '', draft = profile.bio): Response {
-  const bio = profile.bio ? `<div class="markdown">${renderMarkdown(profile.bio)}</div>` : '';
-  const edit = own ? `<form class="stack markdown-form editor-panel" method="post">
-    <div class="markdown-field">
-      <label for="bio-source">Edit bio</label>
-      <textarea id="bio-source" name="bio" rows="3" maxlength="280" aria-describedby="bio-format">${escapeHtml(draft)}</textarea>
-      <small class="metadata" id="bio-format">Public, up to 280 characters. Basic Markdown supported.</small>
-    </div>
-    ${error ? `<p role="alert">${escapeHtml(error)}</p>` : ''}
-    <button>Save bio</button>
-  </form>` : '';
-  return page(profile.username, `<h1>${escapeHtml(profile.username)}</h1>${bio}${edit}`, error ? 400 : 200);
+  return page(profile.username, (<>
+    <h1>{profile.username}</h1>
+    {profile.bio && <MarkdownBody source={profile.bio} />}
+    {own && <StackForm className="markdown-form editor-panel">
+      <MarkdownField id="bio-source" name="bio" label="Edit bio" rows={3} maxLength={280} value={draft}
+        hint="Public, up to 280 characters. Basic Markdown supported." />
+      {error && <p role="alert">{error}</p>}
+      <button>Save bio</button>
+    </StackForm>}
+  </>).toString(), error ? 400 : 200);
 }
 
 export async function profile(request: Request, db: D1Database, pathname: string): Promise<Response | undefined> {

@@ -40,17 +40,6 @@ export function brand(response: Response, siteName: string): Response {
     .transform(response);
 }
 
-export function publisherLink(hostname: string | null): string {
-  if (!hostname) return '';
-  return `<span class="metadata">(<a href="/new?domain=${encodeURIComponent(hostname)}">${escapeHtml(hostname)}</a>)</span>`;
-}
-
 export function profileLink(username: string): string {
   return `/users/${encodeURIComponent(username)}`;
-}
-
-export function authorLink(username: string | null): string {
-  return username
-    ? `<a href="${profileLink(username)}">${escapeHtml(username)}</a>`
-    : 'member';
 }

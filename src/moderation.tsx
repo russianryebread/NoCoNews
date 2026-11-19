@@ -1,7 +1,8 @@
 import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
-import { escapeHtml, page } from './html';
-import { renderMarkdown } from './markdown';
+import { page } from './html';
+import { MarkdownBody } from './components/content';
+import { HiddenTarget, MarkdownField, ModeratorReason, StackForm } from './components/form';
 
 const reasons = ['Spam', 'Abuse', 'Duplicate', 'Off-topic', 'Other'];
 
@@ -20,17 +21,16 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
   const member = await currentMember(request, db);
   if (request.method === 'GET' && path === '/guidelines') {
     const text = await db.prepare('SELECT guidelines FROM community_settings WHERE id = 1').first<string>('guidelines');
-    const edit = member?.role === 'admin' ? `<form class="stack markdown-form editor-panel" method="post" action="/admin/guidelines">
-      <div class="markdown-field">
-        <label for="guidelines-source">Edit community guidelines</label>
-        <textarea id="guidelines-source" name="guidelines" rows="8" maxlength="10000" aria-describedby="guidelines-format" required>${escapeHtml(text)}</textarea>
-        <small class="metadata" id="guidelines-format">Basic Markdown supported. Links and images display as text.</small>
-      </div>
-      <button>Publish</button></form>` : '';
-    const published = text === null
-      ? '<p>Community guidelines will appear here when published.</p>'
-      : `<div class="markdown">${renderMarkdown(text)}</div>`;
-    return page('Guidelines', `<h1>Community guidelines</h1>${published}${edit}`);
+    return page('Guidelines', (<>
+      <h1>Community guidelines</h1>
+      {text === null ? <p>Community guidelines will appear here when published.</p> : <MarkdownBody source={text} />}
+      {member?.role === 'admin' && <StackForm className="markdown-form editor-panel" action="/admin/guidelines">
+        <MarkdownField id="guidelines-source" name="guidelines" label="Edit community guidelines"
+          rows={8} maxLength={10000} required value={text ?? ''}
+          hint="Basic Markdown supported. Links and images display as text." />
+        <button>Publish</button>
+      </StackForm>}
+    </>).toString());
   }
   if (!member) return redirect('/login');
 
@@ -53,10 +53,11 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
   if (request.method === 'GET' && path === '/report') {
     if (!member.username) return redirect('/account');
     const { type, id } = target(url.searchParams);
-    return page('Report', `<h1>Report ${type}</h1><form class="stack" method="post" action="/reports">
-      <input type="hidden" name="type" value="${type}"><input type="hidden" name="id" value="${id}">
-      <label>Reason <select name="reason">${reasons.map(reason => `<option>${reason}</option>`).join('')}</select></label>
-      <label>Note <textarea name="note" maxlength="2000" rows="4"></textarea></label><button>Send report</button></form>`);
+    return page('Report', (<><h1>Report {type}</h1><StackForm action="/reports">
+      <HiddenTarget type={type} id={id} />
+      <label>Reason <select name="reason">{reasons.map(reason => <option>{reason}</option>)}</select></label>
+      <label>Note <textarea name="note" maxlength={2000} rows={4} /></label><button>Send report</button>
+    </StackForm></>).toString());
   }
   if (request.method === 'POST' && path === '/reports') {
     if (!member.username) return redirect('/account');
@@ -87,20 +88,22 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
     const entries = results.map(report => {
       const type = report.story_id ? 'story' : 'comment';
       const id = report.story_id ?? report.comment_id;
-      return `<article class="story"><a href="/stories/${report.discussion}">${type} ${id}</a>
-        <p>${escapeHtml(report.reason)}${report.note ? ` · ${escapeHtml(report.note)}` : ''}</p>
-        <form class="stack" method="post" action="/moderation/actions">
-          <input type="hidden" name="type" value="${type}"><input type="hidden" name="id" value="${id}">
-          <label>Moderator reason <input name="reason" maxlength="500" required></label>
-          <div><button name="action" value="dismiss">Dismiss reports</button>
-          <button name="action" value="hide">Hide</button></div></form></article>`;
+      return <article class="story"><a href={`/stories/${report.discussion}`}>{type} {id}</a>
+        <p>{report.reason}{report.note && <> · {report.note}</>}</p>
+        <StackForm action="/moderation/actions">
+          <HiddenTarget type={type} id={id} />
+          <ModeratorReason label="Moderator reason" />
+          <div><button name="action" value="dismiss">Dismiss reports</button>{' '}
+            <button name="action" value="hide">Hide</button></div>
+        </StackForm></article>;
     });
-    return page('Reports', `<h1>Reports</h1>${entries.join('') || '<p>No open reports.</p>'}
-      <h2>Restore content</h2><form class="stack" method="post" action="/moderation/actions">
-      <label>Type <select name="type"><option>story</option><option>comment</option></select></label>
-      <label>ID <input type="number" min="1" name="id" required></label>
-      <label>Reason <input name="reason" maxlength="500" required></label>
-      <button name="action" value="restore">Restore</button></form>`);
+    return page('Reports', (<><h1>Reports</h1>{entries.length ? entries : <p>No open reports.</p>}
+      <h2>Restore content</h2><StackForm action="/moderation/actions">
+        <label>Type <select name="type"><option>story</option><option>comment</option></select></label>
+        <label>ID <input type="number" min={1} name="id" required /></label>
+        <ModeratorReason label="Reason" />
+        <button name="action" value="restore">Restore</button>
+      </StackForm></>).toString());
   }
   if (request.method === 'POST' && path === '/moderation/actions') return moderate(db, member, await readForm(request));
 }

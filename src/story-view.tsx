@@ -1,6 +1,6 @@
 import type { Member } from './auth';
-import { profileLink } from './html';
-import { renderMarkdown } from './markdown';
+import { Author, MarkdownBody, Publisher } from './components/content';
+import { MarkdownField, StackForm } from './components/form';
 
 export interface Story {
   author_id: number;
@@ -32,14 +32,6 @@ export interface Comment {
 
 type ContentKind = 'story' | 'comment';
 
-function Author({ username }: { username: string | null }) {
-  return username ? <a href={profileLink(username)}>{username}</a> : <>member</>;
-}
-
-function Publisher({ hostname }: { hostname: string }) {
-  return <span class="metadata">(<a href={`/new?domain=${encodeURIComponent(hostname)}`}>{hostname}</a>)</span>;
-}
-
 function Icon({ name }: { name: 'comment' | 'report' }) {
   const path = name === 'comment' ? 'M3.5 3.5h13v9h-8l-4 3v-3h-1z' : 'M5 17V3m0 1c4-3 6 2 11 0v8c-5 2-7-3-11 0';
   return <svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="none"
@@ -62,10 +54,6 @@ function VoteControl({ kind, item, member }: {
     <button name="voted" value={item.voted ? '0' : '1'} aria-pressed={String(Boolean(item.voted))}
       aria-label={item.voted ? 'Remove upvote' : 'Upvote'}>▲</button>
   </form>;
-}
-
-function MarkdownBody({ source }: { source: string }) {
-  return <div class="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(source) }} />;
 }
 
 export function StoryRow({ story, member, heading = false }: { story: Story; member: Member | null; heading?: boolean }) {
@@ -94,22 +82,15 @@ export function StoryRow({ story, member, heading = false }: { story: Story; mem
 
 function CommentForm({ storyId, parentId }: { storyId: number; parentId?: number }) {
   const fieldId = parentId ? `reply-${parentId}-body` : 'comment-body';
-  return <form class={`stack markdown-form comment-form${parentId ? ' reply-form' : ''}`}
-    method="post" action={`/stories/${storyId}/comments`}>
+  return <StackForm className={`markdown-form comment-form${parentId ? ' reply-form' : ''}`}
+    action={`/stories/${storyId}/comments`}>
     <input type="hidden" name="key" value={crypto.randomUUID()} />
     {parentId && <input type="hidden" name="parent" value={parentId} />}
-    <div class="markdown-field">
-      {parentId && <label for={fieldId}>Write a reply</label>}
-      <textarea id={fieldId} name="body" maxlength={10000} rows={parentId ? 2 : 3} required
-        aria-label={parentId ? undefined : 'Add a comment'}
-        placeholder={parentId ? undefined : 'Add a comment…'}
-        aria-describedby={parentId ? undefined : `${fieldId}-format`} />
-    </div>
-    <div class="comment-form-actions">
-      {!parentId && <small class="metadata" id={`${fieldId}-format`}>Basic Markdown supported.</small>}
-      <button>{parentId ? 'Post reply' : 'Post comment'}</button>
-    </div>
-  </form>;
+    <MarkdownField id={fieldId} name="body" rows={parentId ? 2 : 3} maxLength={10000} required
+      label={parentId ? 'Write a reply' : 'Add a comment'} placeholder={parentId ? undefined : 'Add a comment…'}
+      hint={parentId ? undefined : 'Basic Markdown supported.'}
+      footer={<button>{parentId ? 'Post reply' : 'Post comment'}</button>} />
+  </StackForm>;
 }
 
 function CommentThread({ comments, storyId, member }: { comments: Comment[]; storyId: number; member: Member | null }) {

@@ -1,4 +1,5 @@
-import { escapeHtml, page, publisherLink } from './html';
+import { Publisher } from './components/content';
+import { escapeHtml, page } from './html';
 
 interface Match {
   story_id: number;
@@ -26,14 +27,15 @@ export async function search(db: D1Database, url: URL): Promise<Response> {
   const type = url.searchParams.get('type') ?? 'stories';
   const step = Number(url.searchParams.get('page') ?? '1');
   const terms = query.match(/[\p{L}\p{N}\p{M}]+/gu) ?? [];
-  const form = `<h1>Search</h1><form class="search" method="get" action="/search">
+  const form = (<><h1>Search</h1><form class="search" method="get" action="/search">
     <label for="q">Keywords</label>
-    <input id="q" name="q" type="search" maxlength="160" value="${escapeHtml(query.slice(0, 160))}">
+    <input id="q" name="q" type="search" maxlength={160} value={query.slice(0, 160)} />
     <label for="type">Search in</label>
     <select id="type" name="type">
-    <option value="stories">Stories</option>
-    <option value="comments"${type === 'comments' ? ' selected' : ''}>Comments</option>
-    </select><button>Search</button></form>`;
+      <option value="stories">Stories</option>
+      <option value="comments" selected={type === 'comments'}>Comments</option>
+    </select><button>Search</button>
+  </form></>).toString();
 
   if (query.length > 160 || terms.length > 8 || !['stories', 'comments'].includes(type)
       || !Number.isInteger(step) || step < 1 || step > 10) {
@@ -49,9 +51,9 @@ export async function search(db: D1Database, url: URL): Promise<Response> {
     const target = match.comment_id
       ? `${discussion}?comment=${match.comment_id}#comment-${match.comment_id}`
       : discussion;
-    return `<article class="story"><a class="headline" href="${target}">${escapeHtml(match.title)}</a>
-      ${publisherLink(match.hostname)}
-      ${match.excerpt ? `<div class="metadata">${escapeHtml(match.excerpt)}</div>` : ''}</article>`;
+    return (<article class="story"><a class="headline" href={target}>{match.title}</a>{' '}
+      <Publisher hostname={match.hostname} />
+      {match.excerpt && <div class="metadata">{match.excerpt}</div>}</article>).toString();
   });
   const link = (number: number, label: string) =>
     `<a href="/search?${escapeHtml(new URLSearchParams({ q: query, type, page: String(number) }))}">${label}</a>`;

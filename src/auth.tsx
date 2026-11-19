@@ -1,5 +1,7 @@
 import { cookieValue, InvalidForm, readForm, redirect } from './forms';
-import { authorLink, escapeHtml, page } from './html';
+import { page, profileLink } from './html';
+import { Author } from './components/content';
+import { StackForm } from './components/form';
 
 const sessionCookie = '__Host-session';
 const confirmCookie = '__Host-confirm';
@@ -115,17 +117,20 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
   if (request.method === 'GET') {
     if (url.pathname === '/login') {
       if (!env.TURNSTILE_SITE_KEY) return page('Sign in', '<h1>Sign in</h1><p>Sign-in is not configured yet.</p>', 503);
-      const response = page('Sign in', `<section class="auth-panel" aria-labelledby="sign-in-title">
-        <h1 id="sign-in-title">Sign in</h1>
-        <p>Use the email address on your invitation.</p>
-        <form class="stack" method="post" action="/auth/request">
-          <label for="sign-in-email">Email address
-            <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength="254" required>
-          </label>
-          <div class="cf-turnstile" data-size="flexible" data-sitekey="${escapeHtml(env.TURNSTILE_SITE_KEY)}"></div>
-          <button class="primary">Send sign-in link</button>
-        </form></section>
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`);
+      const response = page('Sign in', (<>
+        <section class="auth-panel" aria-labelledby="sign-in-title">
+          <h1 id="sign-in-title">Sign in</h1>
+          <p>Use the email address on your invitation.</p>
+          <StackForm action="/auth/request">
+            <label for="sign-in-email">Email address
+              <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength={254} required />
+            </label>
+            <div class="cf-turnstile" data-size="flexible" data-sitekey={env.TURNSTILE_SITE_KEY} />
+            <button class="primary">Send sign-in link</button>
+          </StackForm>
+        </section>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      </>).toString());
       response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') +
         "; script-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com");
       return response;
@@ -134,22 +139,29 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       const raw = url.searchParams.get('token') ?? '';
       if (!/^[a-f0-9-]{72}$/.test(raw)) throw new InvalidForm();
       const csrf = token();
-      const response = page('Confirm sign-in', `<h1>Confirm sign-in</h1>
-        <form class="stack" method="post" action="/auth/confirm">
-        <input type="hidden" name="token" value="${escapeHtml(raw)}">
-        <input type="hidden" name="csrf" value="${csrf}">
-        <button>Sign in</button></form>`);
+      const response = page('Confirm sign-in', (<>
+        <h1>Confirm sign-in</h1>
+        <StackForm action="/auth/confirm">
+          <input type="hidden" name="token" value={raw} />
+          <input type="hidden" name="csrf" value={csrf} />
+          <button>Sign in</button>
+        </StackForm>
+      </>).toString());
       response.headers.set('Set-Cookie', `${confirmCookie}=${csrf}; ${cookieFlags}; Max-Age=900`);
       return response;
     }
     if (url.pathname === '/account') {
       const member = await currentMember(request, env.DB);
       if (!member) return redirect('/login');
-      return page('Account', `<h1>Account</h1>${url.searchParams.has('reported') ? '<p>Report received.</p>' : ''}
-        ${member.role !== 'member' ? '<p><a href="/moderation/reports">Moderation queue</a></p>' : ''}
-        ${member.username ? `<p>${authorLink(member.username)} · <a href="/users/${encodeURIComponent(member.username)}">Edit bio</a></p>` :
-        '<form class="stack" method="post" action="/account"><label>Username <input name="username" required maxlength="24"></label> <button>Save</button></form>'}
-        <form method="post" action="/auth/logout"><button>Sign out</button></form>`);
+      return page('Account', (<>
+        <h1>Account</h1>
+        {url.searchParams.has('reported') && <p>Report received.</p>}
+        {member.role !== 'member' && <p><a href="/moderation/reports">Moderation queue</a></p>}
+        {member.username
+          ? <p><Author username={member.username} /> · <a href={profileLink(member.username)}>Edit bio</a></p>
+          : <StackForm action="/account"><label>Username <input name="username" required maxlength={24} /></label><button>Save</button></StackForm>}
+        <form method="post" action="/auth/logout"><button>Sign out</button></form>
+      </>).toString());
     }
   }
   if (request.method !== 'POST') return;
