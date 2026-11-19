@@ -1,13 +1,9 @@
 import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
-import { escapeHtml, icon, page } from './html';
+import { escapeHtml, page } from './html';
 import { renderMarkdown } from './markdown';
 
 const reasons = ['Spam', 'Abuse', 'Duplicate', 'Off-topic', 'Other'];
-
-export function reportLink(type: string, id: number, member: Member | null): string {
-  return member?.username ? ` · <a class="icon-link report-link" href="/report?type=${type}&amp;id=${id}" title="Report ${type}" aria-label="Report ${type}">${icon('report')}</a>` : '';
-}
 
 function target(params: URLSearchParams): { type: 'story' | 'comment'; id: number } {
   const type = params.get('type');

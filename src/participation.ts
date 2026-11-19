@@ -2,28 +2,6 @@ import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
 import { page } from './html';
 
-export function voteControl(kind: 'stories' | 'comments', id: number, voted: number, active: boolean): string {
-  if (!active) return '';
-  return `<form class="inline" method="post" action="/${kind}/${id}/vote">
-    <button name="voted" value="${voted ? '0' : '1'}" aria-pressed="${Boolean(voted)}"
-    aria-label="${voted ? 'Remove upvote' : 'Upvote'}">▲</button></form>`;
-}
-
-export function commentForm(story: number, parent?: number): string {
-  const fieldId = parent ? `reply-${parent}-body` : 'comment-body';
-  return `<form class="stack markdown-form comment-form${parent ? ' reply-form' : ''}" method="post" action="/stories/${story}/comments">
-    <input type="hidden" name="key" value="${crypto.randomUUID()}">
-    ${parent ? `<input type="hidden" name="parent" value="${parent}">` : ''}
-    <div class="markdown-field">
-      ${parent ? `<label for="${fieldId}">Write a reply</label>` : ''}
-      <textarea id="${fieldId}" name="body" maxlength="10000" ${parent ? 'rows="2"' : `aria-label="Add a comment" placeholder="Add a comment…" aria-describedby="${fieldId}-format" rows="3"`} required></textarea>
-    </div>
-    <div class="comment-form-actions">
-      ${parent ? '' : `<small class="metadata" id="${fieldId}-format">Basic Markdown supported.</small>`}
-      <button>Post ${parent ? 'reply' : 'comment'}</button>
-    </div></form>`;
-}
-
 function submissionForm(): Response {
   return page('Submit', `<h1>Submit a story</h1><form class="stack markdown-form story-form" method="post" action="/stories">
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
