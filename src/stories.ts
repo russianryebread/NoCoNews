@@ -133,8 +133,7 @@ export async function discussion(db: D1Database, id: number, focus: string | nul
     EXISTS (SELECT 1 FROM comment_votes v WHERE v.comment_id = c.id AND v.user_id = ?) AS voted FROM comments c JOIN users u ON u.id = c.author_id
     WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(member?.id ?? null, id).all<Comment>();
   const comments = commentList(results.slice(0, 500), id, member);
-  return page(story.title, `${intro}<section class="discussion-thread" id="comments" aria-labelledby="thread-title">
-    <h2 id="thread-title">${story.comment_count} ${story.comment_count === 1 ? 'comment' : 'comments'}</h2>
+  return page(story.title, `${intro}<section class="discussion-thread" id="comments" aria-label="Comments">
     ${member?.username ? commentForm(id) : '<p><a href="/account">Sign in to comment</a></p>'}
     ${comments}${results.length > 500 ? '<p>Only the first 500 comments are shown.</p>' : ''}</section>`);
 }

@@ -137,7 +137,15 @@ form .markdown-field textarea {
   box-shadow: 0 1px 3px rgb(37 39 34 / 5%);
 }
 .comment-form, .story-form { width: min(100%, 32rem); }
-.comment-form { margin-block-start: .5rem; }
+.comment-form { gap: .35rem; margin-block-start: 0; }
+.comment-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .75rem;
+  width: 100%;
+}
+.comment-form-actions button { margin-inline-start: auto; }
 
 .markdown { overflow-wrap: anywhere; }
 .markdown > :first-child { margin-block-start: 0; }

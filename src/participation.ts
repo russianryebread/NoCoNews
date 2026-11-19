@@ -15,11 +15,13 @@ export function commentForm(story: number, parent?: number): string {
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
     ${parent ? `<input type="hidden" name="parent" value="${parent}">` : ''}
     <div class="markdown-field">
-      <label for="${fieldId}">${parent ? 'Write a reply' : 'Add a comment'}</label>
-      <textarea id="${fieldId}" name="body" maxlength="10000" ${parent ? 'rows="2"' : `aria-describedby="${fieldId}-format" rows="3"`} required></textarea>
-      ${parent ? '' : `<small class="metadata" id="${fieldId}-format">Basic Markdown supported.</small>`}
+      ${parent ? `<label for="${fieldId}">Write a reply</label>` : ''}
+      <textarea id="${fieldId}" name="body" maxlength="10000" ${parent ? 'rows="2"' : `aria-label="Add a comment" placeholder="Add a comment…" aria-describedby="${fieldId}-format" rows="3"`} required></textarea>
     </div>
-    <button>Post ${parent ? 'reply' : 'comment'}</button></form>`;
+    <div class="comment-form-actions">
+      ${parent ? '' : `<small class="metadata" id="${fieldId}-format">Basic Markdown supported.</small>`}
+      <button>Post ${parent ? 'reply' : 'comment'}</button>
+    </div></form>`;
 }
 
 function submissionForm(): Response {
