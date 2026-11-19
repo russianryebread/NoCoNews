@@ -1,5 +1,6 @@
 import type { Member } from './auth';
 import { commentForm, voteControl } from './participation';
+import { redirect } from './forms';
 import { escapeHtml, page } from './html';
 
 interface Story {
@@ -35,6 +36,10 @@ function storyRow(story: Story, member: Member | null): string {
 }
 
 export async function feed(db: D1Database, url: URL, member: Member | null): Promise<Response> {
+  if (url.pathname === '/' && !url.searchParams.has('before')) {
+    const ranked = await rankedFeed(db, url, member);
+    if (ranked) return ranked;
+  }
   const title = url.pathname === '/' ? 'Top' : 'New';
   const cursor = url.searchParams.get('before');
   const [time, id] = cursor?.split('.').map(Number) ?? [];
@@ -55,6 +60,32 @@ export async function feed(db: D1Database, url: URL, member: Member | null): Pro
   return page(title, `<h1>${title}</h1>${results.length
     ? results.slice(0, 30).map(story => storyRow(story, member)).join('')
     : '<p>No stories yet.</p>'}${next}`);
+}
+
+async function rankedFeed(db: D1Database, url: URL, member: Member | null): Promise<Response | undefined> {
+  const cursor = url.searchParams.get('rank');
+  const [generation, position] = cursor?.split('.').map(Number) ?? [];
+  if (cursor && (!/^\d+\.\d+$/.test(cursor) || !Number.isSafeInteger(generation) ||
+      !Number.isInteger(position) || position < 1 || position > 300)) {
+    return page('Invalid page', '<h1>Invalid ranking cursor</h1>', 400);
+  }
+  const snapshot = cursor
+    ? await db.prepare('SELECT generated_at FROM rank_generations WHERE generated_at = ?').bind(generation).first<number>('generated_at')
+    : await db.prepare('SELECT max(generated_at) AS generated_at FROM rank_generations').first<number>('generated_at');
+  if (snapshot === null) return cursor ? redirect('/?expired=1') : undefined;
+
+  const { results } = await db.prepare(`SELECT ${storyColumns}, r.position,
+      EXISTS (SELECT 1 FROM story_votes v WHERE v.story_id = s.id AND v.user_id = ?) AS voted
+    FROM rank_entries r JOIN stories s ON s.id = r.story_id JOIN users u ON u.id = s.author_id
+    WHERE r.generated_at = ? AND r.position > ? AND s.state = 'visible'
+    ORDER BY r.position LIMIT 31`).bind(member?.id ?? null, snapshot, position ?? 0).all<Story & { position: number }>();
+  if (!cursor && !results.length) return undefined;
+  const next = results.length > 30
+    ? `<p><a href="/?rank=${snapshot}.${results[29].position}">More</a></p>`
+    : '';
+  const notice = url.searchParams.has('expired') ? '<p>The previous ranking expired. Showing the latest ranking.</p>' : '';
+  return page('Top', `<h1>Top</h1>${notice}${results.slice(0, 30).map(story => storyRow(story, member)).join('')
+    || '<p>No more stories.</p>'}${next}`);
 }
 
 export async function discussion(db: D1Database, id: number, focus: string | null, member: Member | null): Promise<Response> {

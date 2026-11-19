@@ -1,3 +1,4 @@
+import { refreshRanking } from './ranking';
 import { participation } from './participation';
 import { auth, currentMember, type AppEnv } from './auth';
 import { InvalidForm } from './forms';
@@ -6,6 +7,9 @@ import { page } from './html';
 import { discussion, feed } from './stories';
 
 export default {
+  async scheduled(event, env) {
+    await refreshRanking(env.DB, event.scheduledTime);
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const { pathname } = url;
