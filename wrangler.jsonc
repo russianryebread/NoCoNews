@@ -32,8 +32,7 @@
     "SITE_NAME": "NoCoNews",
     "MAIL_PROVIDER": "cloudflare",
     "MAILGUN_DOMAIN": "",
-    "MAILGUN_REGION": "us",
-    "OPEN_REGISTRATION": "false"
+    "MAILGUN_REGION": "us"
   },
   "send_email": [
     {

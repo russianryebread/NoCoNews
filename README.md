@@ -43,5 +43,5 @@ Workers and D1 still run on Cloudflare. With Mailgun enabled, the Worker sends s
 1. Verify a custom sending domain in Mailgun. Mailgun sandbox domains require authorized recipients.
 2. Set `MAIL_PROVIDER` to `mailgun`, `MAILGUN_DOMAIN` to the verified Mailgun domain, `MAILGUN_REGION` to `us` or `eu`, and `MAIL_FROM` to the Mailgun sender address. Remove the Cloudflare `send_email` binding from the Mailgun deployment config if it is no longer used.
 3. Store a Mailgun domain sending key using `npx wrangler secret put MAILGUN_API_KEY --config wrangler.staging.jsonc`.
-4. Keep `OPEN_REGISTRATION` set to `false` for invite-only sign-in. With Mailgun, invited recipients need no Cloudflare verification. Set it to `true` for public passwordless registration. Turnstile and sign-in rate limits apply to either mode.
+4. With Mailgun, active members who have chosen a username can invite up to five addresses per rolling 24 hours from Account. They share the sign-in page with the recipient, who requests their own link. Invited addresses need no Cloudflare verification. Turnstile and sign-in rate limits still apply.
 5. Redeploy and request a sign-in link. Confirm inbox delivery before changing production.

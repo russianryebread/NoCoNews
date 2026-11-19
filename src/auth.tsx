@@ -34,14 +34,38 @@ export async function currentMember(request: Request, db: D1Database): Promise<M
     .bind(await digest(session)).first<Member>();
 }
 
-function openRegistration(env: AppEnv): boolean {
-  return env.MAIL_PROVIDER === 'mailgun' && env.OPEN_REGISTRATION === 'true';
+function validEmail(email: string): boolean {
+  return email.length <= 254 && /^[^\s@<>,;:"()\[\]\\]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(email);
 }
 
-function allowed(env: AppEnv, email: string): boolean {
-  if (email.length > 254 || !/^[^\s@<>,;:"()\[\]\\]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(email)) return false;
-  return openRegistration(env) || env.LOGIN_RECIPIENTS.split(',')
-    .some(recipient => recipient.trim().toLowerCase() === email);
+async function allowed(env: AppEnv, email: string): Promise<boolean> {
+  if (!validEmail(email)) return false;
+  if (env.LOGIN_RECIPIENTS.split(',').some(recipient => recipient.trim().toLowerCase() === email)) return true;
+  if (env.MAIL_PROVIDER !== 'mailgun') return false;
+  return Boolean(await env.DB.prepare('SELECT 1 FROM member_invites WHERE email = ?').bind(email).first());
+}
+
+async function invite(request: Request, env: AppEnv): Promise<Response> {
+  const member = await currentMember(request, env.DB);
+  if (!member) return redirect('/login');
+  if (!member.username) return redirect('/account');
+  if (env.MAIL_PROVIDER !== 'mailgun' || !mailConfigured(env)) {
+    return page('Invites unavailable', '<h1>Invites are unavailable</h1><p><a href="/account">Back to Account</a></p>', 503);
+  }
+  const form = await readForm(request);
+  const email = form.get('email')?.trim().toLowerCase() ?? '';
+  if (!validEmail(email)) {
+    return page('Invalid email', '<h1>Enter a valid email address</h1><p><a href="/account#invite">Try again</a></p>', 400);
+  }
+
+  const created = await env.DB.prepare(`INSERT INTO member_invites(email, inviter_id)
+    SELECT ?, id FROM users WHERE id = ? AND state = 'active' AND username IS NOT NULL
+    AND (SELECT count(*) FROM member_invites WHERE inviter_id = ? AND created_at > unixepoch() - 86400) < 5
+    ON CONFLICT(email) DO NOTHING`).bind(email, member.id, member.id).run();
+  if (!created.meta.changes && !await allowed(env, email)) {
+    return page('Invite unavailable', '<h1>Invite unavailable</h1><p>You can create up to five invites every 24 hours.</p><p><a href="/account#invite">Back to Account</a></p>', 429);
+  }
+  return redirect('/account?invited=1#invite');
 }
 
 async function requestLink(request: Request, env: AppEnv, form: URLSearchParams): Promise<Response> {
@@ -63,7 +87,7 @@ async function requestLink(request: Request, env: AppEnv, form: URLSearchParams)
   if (!result.success || result.hostname !== new URL(env.PUBLIC_ORIGIN).hostname) return retry();
 
   const email = form.get('email')?.trim().toLowerCase() ?? '';
-  if (!allowed(env, email)) return response();
+  if (!await allowed(env, email)) return response();
 
   const now = Math.floor(Date.now() / 1000);
   const quota = await env.DB.prepare(`INSERT INTO login_quotas(email, last_request, day, sent)
@@ -96,7 +120,7 @@ async function confirm(env: AppEnv, request: Request, form: URLSearchParams): Pr
   const challenge = await env.DB.prepare('SELECT email FROM login_challenges WHERE digest = ? AND expires_at > unixepoch()')
     .bind(hashed).first<{ email: string }>();
   const expired = () => page('Link expired', '<h1>Link expired or already used</h1><p><a href="/login">Request a new link</a></p>', 400);
-  if (!challenge || !allowed(env, challenge.email)) return expired();
+  if (!challenge || !await allowed(env, challenge.email)) return expired();
 
   const session = token();
   const match = 'SELECT email FROM login_challenges WHERE digest = ? AND expires_at > unixepoch()';
@@ -123,7 +147,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       const response = page('Sign in', (<>
         <section class="auth-panel" aria-labelledby="sign-in-title">
           <h1 id="sign-in-title">Sign in</h1>
-          <p>{openRegistration(env) ? 'Enter your email to sign in or create an account.' : 'Use the email address on your invitation.'}</p>
+          <p>Use the email address on your invitation.</p>
           <StackForm action="/auth/request">
             <label for="sign-in-email">Email address
               <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength={254} required />
@@ -163,11 +187,23 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
         {member.username
           ? <p><Author username={member.username} /> · <a href={profileLink(member.username)}>Edit bio</a></p>
           : <StackForm action="/account"><label>Username <input name="username" required maxlength={24} /></label><button>Save</button></StackForm>}
+        {member.username && env.MAIL_PROVIDER === 'mailgun' && mailConfigured(env) &&
+          <section id="invite" aria-labelledby="invite-title">
+            <h2 id="invite-title">Invite someone</h2>
+            {url.searchParams.get('invited') === '1'
+              ? <p role="status">Invite ready. Share the <a href="/login">sign-in page</a> with them and tell them to use the email address you invited.</p>
+              : <p class="metadata">After inviting someone, share the sign-in page with them.</p>}
+            <StackForm action="/account/invite">
+              <label>Email address <input type="email" name="email" maxlength={254} required /></label>
+              <button>Invite</button>
+            </StackForm>
+          </section>}
         <form method="post" action="/auth/logout"><button>Sign out</button></form>
       </>).toString());
     }
   }
   if (request.method !== 'POST') return;
+  if (url.pathname === '/account/invite') return invite(request, env);
   if (url.pathname === '/auth/request') return requestLink(request, env, await readForm(request));
   if (url.pathname === '/auth/confirm') return confirm(env, request, await readForm(request));
   if (url.pathname === '/auth/logout') {
