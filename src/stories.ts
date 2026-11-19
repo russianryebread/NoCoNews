@@ -1,6 +1,10 @@
+import type { Member } from './auth';
+import { commentForm, voteControl } from './participation';
 import { escapeHtml, page } from './html';
 
 interface Story {
+  author_id: number;
+  voted: number;
   id: number;
   title: string;
   url: string | null;
@@ -12,15 +16,16 @@ interface Story {
   comment_count: number;
 }
 
-const storyColumns = `s.id, s.title, s.url, s.hostname, s.body, u.username,
+const storyColumns = `s.id, s.author_id, s.title, s.url, s.hostname, s.body, u.username,
   s.created_at, s.vote_count, s.comment_count`;
 
-function storyRow(story: Story): string {
+function storyRow(story: Story, member: Member | null): string {
   const discussion = `/stories/${story.id}`;
   const target = story.url ?? discussion;
   const timestamp = new Date(story.created_at * 1000).toISOString();
 
   return `<article class="story">
+  ${voteControl('stories', story.id, story.voted, Boolean(member?.username && member.id !== story.author_id))}
   <a class="headline" href="${escapeHtml(target)}">${escapeHtml(story.title)}</a>
   ${story.hostname ? `<span class="metadata">(${escapeHtml(story.hostname)})</span>` : ''}
   <div class="metadata">${story.vote_count} points · ${escapeHtml(story.username ?? 'member')} ·
@@ -29,7 +34,7 @@ function storyRow(story: Story): string {
 </article>`;
 }
 
-export async function feed(db: D1Database, url: URL): Promise<Response> {
+export async function feed(db: D1Database, url: URL, member: Member | null): Promise<Response> {
   const title = url.pathname === '/' ? 'Top' : 'New';
   const cursor = url.searchParams.get('before');
   const [time, id] = cursor?.split('.').map(Number) ?? [];
@@ -38,24 +43,24 @@ export async function feed(db: D1Database, url: URL): Promise<Response> {
   }
 
   // Top uses the chronological fallback until the first ranking snapshot exists.
-  const statement = db.prepare(`SELECT ${storyColumns} FROM stories s
+  const statement = db.prepare(`SELECT ${storyColumns}, EXISTS (SELECT 1 FROM story_votes v WHERE v.story_id = s.id AND v.user_id = ?) AS voted FROM stories s
     JOIN users u ON u.id = s.author_id WHERE s.state = 'visible'
     ${cursor === null ? '' : 'AND (s.created_at, s.id) < (?, ?)'}
     ORDER BY s.created_at DESC, s.id DESC LIMIT 31`);
-  const { results } = await (cursor === null ? statement : statement.bind(time, id)).all<Story>();
+  const { results } = await (cursor === null ? statement.bind(member?.id ?? null) : statement.bind(member?.id ?? null, time, id)).all<Story>();
   const last = results[29];
   const next = results.length > 30
     ? `<p><a href="${url.pathname}?before=${last.created_at}.${last.id}">More</a></p>`
     : '';
   return page(title, `<h1>${title}</h1>${results.length
-    ? results.slice(0, 30).map(storyRow).join('')
+    ? results.slice(0, 30).map(story => storyRow(story, member)).join('')
     : '<p>No stories yet.</p>'}${next}`);
 }
 
-export async function discussion(db: D1Database, id: number, focus: string | null): Promise<Response> {
-  const story = await db.prepare(`SELECT ${storyColumns} FROM stories s
+export async function discussion(db: D1Database, id: number, focus: string | null, member: Member | null): Promise<Response> {
+  const story = await db.prepare(`SELECT ${storyColumns}, EXISTS (SELECT 1 FROM story_votes v WHERE v.story_id = s.id AND v.user_id = ?) AS voted FROM stories s
     JOIN users u ON u.id = s.author_id WHERE s.state = 'visible' AND s.id = ?`)
-    .bind(id).first<Story>();
+    .bind(member?.id ?? null, id).first<Story>();
   if (!story) return page('Story not found', '<h1>Story not found</h1>', 404);
   const body = story.body ? `<p class="story-body">${escapeHtml(story.body)}</p>` : '';
   if (focus && /^\d+$/.test(focus) && Number.isSafeInteger(Number(focus))) {
@@ -65,22 +70,27 @@ export async function discussion(db: D1Database, id: number, focus: string | nul
        SELECT c.id, c.parent_id FROM comments c JOIN ancestors a ON c.id = a.parent_id
        WHERE c.story_id = ?
     )
-    SELECT c.id, c.parent_id, c.body, c.state, c.vote_count, c.edited_at, u.username
+    SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, c.state, c.vote_count, c.edited_at, u.username,
+      EXISTS (SELECT 1 FROM comment_votes v WHERE v.comment_id = c.id AND v.user_id = ?) AS voted
     FROM ancestors a JOIN comments c ON c.id = a.id JOIN users u ON u.id = c.author_id`)
-      .bind(id, Number(focus), id).all<Comment>();
+      .bind(id, Number(focus), id, member?.id ?? null).all<Comment>();
     if (!results.length) return page('Comment not found', '<h1>Comment not found</h1>', 404);
-    return page(story.title, `<h1>Discussion</h1>${storyRow(story)}${body}
-      <p><a href="/stories/${id}">Full discussion</a></p>${commentList(results)}`);
+    return page(story.title, `<h1>Discussion</h1>${storyRow(story, member)}${body}
+      <p><a href="/stories/${id}">Full discussion</a></p>${commentList(results, id, member)}`);
   }
 
-  const { results } = await db.prepare(`SELECT c.id, c.parent_id, c.body, c.depth, c.state,
-    c.vote_count, c.edited_at, u.username FROM comments c JOIN users u ON u.id = c.author_id
-    WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(id).all<Comment>();
-  const comments = commentList(results.slice(0, 500));
-  return page(story.title, `<h1>Discussion</h1>${storyRow(story)}${body}<h2>Comments</h2>${comments}${results.length > 500 ? '<p>Only the first 500 comments are shown.</p>' : ''}`);
+  const { results } = await db.prepare(`SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, c.state,
+    c.vote_count, c.edited_at, u.username,
+    EXISTS (SELECT 1 FROM comment_votes v WHERE v.comment_id = c.id AND v.user_id = ?) AS voted FROM comments c JOIN users u ON u.id = c.author_id
+    WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(member?.id ?? null, id).all<Comment>();
+  const comments = commentList(results.slice(0, 500), id, member);
+  return page(story.title, `<h1>Discussion</h1>${storyRow(story, member)}${body}<h2>Comments</h2>${member?.username ? commentForm(id) : '<p><a href="/account">Sign in to comment</a></p>'}${comments}${results.length > 500 ? '<p>Only the first 500 comments are shown.</p>' : ''}`);
 }
 
 interface Comment {
+  author_id: number;
+  depth: number;
+  voted: number;
   id: number;
   parent_id: number | null;
   body: string;
@@ -90,7 +100,7 @@ interface Comment {
   username: string | null;
 }
 
-function commentList(comments: Comment[]): string {
+function commentList(comments: Comment[], story: number, member: Member | null): string {
   const children = new Map<number | null, Comment[]>();
   for (const comment of comments) {
     const siblings = children.get(comment.parent_id) ?? [];
@@ -103,8 +113,9 @@ function commentList(comments: Comment[]): string {
     if (!siblings?.length) return '';
     return `<ol class="comments">${siblings.map(comment => {
       const text = comment.state === 'visible'
-        ? `<div class="metadata">${escapeHtml(comment.username ?? 'member')} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}</div>
-           <div class="story-body">${escapeHtml(comment.body)}</div>`
+        ? `<div class="metadata">${voteControl('comments', comment.id, comment.voted, Boolean(member?.username && member.id !== comment.author_id))} ${escapeHtml(comment.username ?? 'member')} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}</div>
+           <div class="story-body">${escapeHtml(comment.body)}</div>
+           ${member?.username && comment.depth < 8 ? `<details><summary>Reply</summary>${commentForm(story, comment.id)}</details>` : ''}`
         : '<p class="metadata">[comment unavailable]</p>';
       return `<li id="comment-${comment.id}">${text}${render(comment.id)}</li>`;
     }).join('')}</ol>`;

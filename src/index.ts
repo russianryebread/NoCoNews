@@ -1,4 +1,5 @@
-import { auth, type AppEnv } from './auth';
+import { participation } from './participation';
+import { auth, currentMember, type AppEnv } from './auth';
 import { InvalidForm } from './forms';
 import { search } from './search';
 import { page } from './html';
@@ -11,15 +12,17 @@ export default {
     try {
       const account = await auth(request, env, url);
       if (account) return account;
+      const action = await participation(request, env.DB, url);
+      if (action) return action;
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
       }
 
-      if (pathname === '/' || pathname === '/new') return await feed(env.DB, url);
+      if (pathname === '/' || pathname === '/new') return await feed(env.DB, url, await currentMember(request, env.DB));
 
       const story = /^\/stories\/(\d+)$/.exec(pathname);
       if (story && Number.isSafeInteger(Number(story[1]))) {
-        return await discussion(env.DB, Number(story[1]), url.searchParams.get('comment'));
+        return await discussion(env.DB, Number(story[1]), url.searchParams.get('comment'), await currentMember(request, env.DB));
       }
 
       if (pathname === '/search') return await search(env.DB, url);
