@@ -15,7 +15,7 @@ export function page(title: string, content: string, status = 200): Response {
 </head>
 <body>
 <header><a class="brand" href="/">NoCoNews</a><nav aria-label="Main">
-<a href="/">Top</a> <a href="/new">New</a> <a href="/search">Search</a> <a href="/submit">Submit</a> <a href="/account">Account</a>
+<a href="/">Top</a> <a href="/new">New</a> <a href="/search">Search</a> <a href="/submit">Submit</a> <a href="/guidelines">Guidelines</a> <a href="/account">Account</a>
 </nav></header>
 <main>${content}</main>
 </body>

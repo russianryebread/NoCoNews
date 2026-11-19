@@ -139,7 +139,9 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
     if (url.pathname === '/account') {
       const member = await currentMember(request, env.DB);
       if (!member) return redirect('/login');
-      return page('Account', `<h1>Account</h1>${member.username ? `<p>${escapeHtml(member.username)}</p>` :
+      return page('Account', `<h1>Account</h1>${url.searchParams.has('reported') ? '<p>Report received.</p>' : ''}
+        ${member.role !== 'member' ? '<p><a href="/moderation/reports">Moderation queue</a></p>' : ''}
+        ${member.username ? `<p>${escapeHtml(member.username)}</p>` :
         '<form method="post" action="/account"><label>Username <input name="username" required maxlength="24"></label> <button>Save</button></form>'}
         <form method="post" action="/auth/logout"><button>Sign out</button></form>`);
     }

@@ -1,3 +1,4 @@
+import { moderation } from './moderation';
 import { refreshRanking } from './ranking';
 import { participation } from './participation';
 import { auth, currentMember, type AppEnv } from './auth';
@@ -18,6 +19,8 @@ export default {
       if (account) return account;
       const action = await participation(request, env.DB, url);
       if (action) return action;
+      const review = await moderation(request, env.DB, url);
+      if (review) return review;
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
       }

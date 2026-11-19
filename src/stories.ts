@@ -1,3 +1,4 @@
+import { reportLink } from './moderation';
 import type { Member } from './auth';
 import { commentForm, voteControl } from './participation';
 import { redirect } from './forms';
@@ -31,7 +32,7 @@ function storyRow(story: Story, member: Member | null): string {
   ${story.hostname ? `<span class="metadata">(${escapeHtml(story.hostname)})</span>` : ''}
   <div class="metadata">${story.vote_count} points · ${escapeHtml(story.username ?? 'member')} ·
   <time datetime="${timestamp}">${timestamp.slice(0, 10)}</time> ·
-  <a href="${discussion}">${story.comment_count} comments</a></div>
+  <a href="${discussion}">${story.comment_count} comments</a>${reportLink('story', story.id, member)}</div>
 </article>`;
 }
 
@@ -144,7 +145,7 @@ function commentList(comments: Comment[], story: number, member: Member | null):
     if (!siblings?.length) return '';
     return `<ol class="comments">${siblings.map(comment => {
       const text = comment.state === 'visible'
-        ? `<div class="metadata">${voteControl('comments', comment.id, comment.voted, Boolean(member?.username && member.id !== comment.author_id))} ${escapeHtml(comment.username ?? 'member')} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}</div>
+        ? `<div class="metadata">${voteControl('comments', comment.id, comment.voted, Boolean(member?.username && member.id !== comment.author_id))} ${escapeHtml(comment.username ?? 'member')} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}${reportLink('comment', comment.id, member)}</div>
            <div class="story-body">${escapeHtml(comment.body)}</div>
            ${member?.username && comment.depth < 8 ? `<details><summary>Reply</summary>${commentForm(story, comment.id)}</details>` : ''}`
         : '<p class="metadata">[comment unavailable]</p>';

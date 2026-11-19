@@ -23,7 +23,7 @@ function submissionForm(): Response {
     <label>Title <input name="title" maxlength="200" required></label>
     <label>Link <input name="url" type="url" maxlength="2048"></label>
     <label>Text <textarea name="body" maxlength="10000" rows="5"></textarea></label>
-    <p class="metadata">Enter a link or write a text post.</p><button>Submit</button></form>`);
+    <p class="metadata">Enter a link or write a text post. See the <a href="/guidelines">community guidelines</a>.</p><button>Submit</button></form>`);
 }
 
 function requestKey(form: URLSearchParams): string {
