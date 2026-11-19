@@ -28,3 +28,8 @@ a { color: var(--accent); }
 nav a { display: inline-block; padding: .25rem; font-size: .875rem; }
 h1 { font-size: 1.125rem; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.story { padding: .45rem 0; overflow-wrap: anywhere; }
+.headline { font-weight: 600; }
+.metadata { color: var(--muted); font-size: .8125rem; }
+.story-body { white-space: pre-wrap; overflow-wrap: anywhere; }

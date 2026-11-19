@@ -1,13 +1,27 @@
 import { page } from './html';
+import { discussion, feed } from './stories';
 
 export default {
-  fetch(request) {
-    const { pathname } = new URL(request.url);
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const { pathname } = url;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
     }
-    const title = new Map([['/', 'Top'], ['/new', 'New'], ['/search', 'Search']]).get(pathname);
-    if (!title) return page('Not found', '<h1>Page not found</h1>', 404);
-    return page(title, `<h1>${title}</h1><p>The feed is being set up.</p>`);
+
+    try {
+      if (pathname === '/' || pathname === '/new') return await feed(env.DB, url);
+
+      const story = /^\/stories\/(\d+)$/.exec(pathname);
+      if (story && Number.isSafeInteger(Number(story[1]))) {
+        return await discussion(env.DB, Number(story[1]));
+      }
+
+      if (pathname === '/search') return page('Search', '<h1>Search</h1><p>Search is being set up.</p>');
+      return page('Not found', '<h1>Page not found</h1>', 404);
+    } catch {
+      console.error({ event: 'page_query_failed' });
+      return page('Unavailable', '<h1>Temporarily unavailable</h1>', 503);
+    }
   },
 } satisfies ExportedHandler<Env>;
