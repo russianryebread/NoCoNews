@@ -25,7 +25,8 @@ export function page(title: string, content: string, status = 200): Response {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
       'Content-Security-Policy': "default-src 'none'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-      'Referrer-Policy': 'no-referrer',
+      // Native POSTs need a serialized Origin. Keep paths and query strings out of referrers.
+      'Referrer-Policy': 'strict-origin',
       'X-Content-Type-Options': 'nosniff',
     },
   });

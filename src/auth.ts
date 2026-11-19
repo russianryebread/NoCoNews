@@ -45,13 +45,14 @@ async function requestLink(request: Request, env: AppEnv, form: URLSearchParams)
   if (!env.TURNSTILE_SECRET || !env.TURNSTILE_SITE_KEY || !env.PUBLIC_ORIGIN || !env.MAIL_FROM) {
     return page('Sign-in unavailable', '<h1>Sign-in has not been configured</h1>', 503);
   }
-  if (!challenge || challenge.length > 2048) throw new InvalidForm();
+  const retry = () => page('Verification required', '<h1>Could not verify your sign-in request</h1><p><a href="/login">Try signing in again</a></p>', 400);
+  if (!challenge || challenge.length > 2048) return retry();
   const verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
     method: 'POST',
     body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: challenge }),
   });
   const result = await verification.json<{ success?: boolean; hostname?: string }>();
-  if (!result.success || result.hostname !== new URL(env.PUBLIC_ORIGIN).hostname) throw new InvalidForm();
+  if (!result.success || result.hostname !== new URL(env.PUBLIC_ORIGIN).hostname) return retry();
 
   const email = form.get('email')?.trim().toLowerCase() ?? '';
   if (!allowed(env, email)) return response();
