@@ -52,12 +52,27 @@ export async function feed(db: D1Database, url: URL): Promise<Response> {
     : '<p>No stories yet.</p>'}${next}`);
 }
 
-export async function discussion(db: D1Database, id: number): Promise<Response> {
+export async function discussion(db: D1Database, id: number, focus: string | null): Promise<Response> {
   const story = await db.prepare(`SELECT ${storyColumns} FROM stories s
     JOIN users u ON u.id = s.author_id WHERE s.state = 'visible' AND s.id = ?`)
     .bind(id).first<Story>();
   if (!story) return page('Story not found', '<h1>Story not found</h1>', 404);
   const body = story.body ? `<p class="story-body">${escapeHtml(story.body)}</p>` : '';
+  if (focus && /^\d+$/.test(focus) && Number.isSafeInteger(Number(focus))) {
+    const { results } = await db.prepare(`WITH RECURSIVE ancestors(id, parent_id) AS (
+       SELECT id, parent_id FROM comments WHERE story_id = ? AND id = ? AND state = 'visible'
+       UNION
+       SELECT c.id, c.parent_id FROM comments c JOIN ancestors a ON c.id = a.parent_id
+       WHERE c.story_id = ?
+    )
+    SELECT c.id, c.parent_id, c.body, c.state, c.vote_count, c.edited_at, u.username
+    FROM ancestors a JOIN comments c ON c.id = a.id JOIN users u ON u.id = c.author_id`)
+      .bind(id, Number(focus), id).all<Comment>();
+    if (!results.length) return page('Comment not found', '<h1>Comment not found</h1>', 404);
+    return page(story.title, `<h1>Discussion</h1>${storyRow(story)}${body}
+      <p><a href="/stories/${id}">Full discussion</a></p>${commentList(results)}`);
+  }
+
   const { results } = await db.prepare(`SELECT c.id, c.parent_id, c.body, c.depth, c.state,
     c.vote_count, c.edited_at, u.username FROM comments c JOIN users u ON u.id = c.author_id
     WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(id).all<Comment>();

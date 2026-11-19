@@ -1,3 +1,4 @@
+import { search } from './search';
 import { page } from './html';
 import { discussion, feed } from './stories';
 
@@ -14,10 +15,10 @@ export default {
 
       const story = /^\/stories\/(\d+)$/.exec(pathname);
       if (story && Number.isSafeInteger(Number(story[1]))) {
-        return await discussion(env.DB, Number(story[1]));
+        return await discussion(env.DB, Number(story[1]), url.searchParams.get('comment'));
       }
 
-      if (pathname === '/search') return page('Search', '<h1>Search</h1><p>Search is being set up.</p>');
+      if (pathname === '/search') return await search(env.DB, url);
       return page('Not found', '<h1>Page not found</h1>', 404);
     } catch {
       console.error({ event: 'page_query_failed' });
