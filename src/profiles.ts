@@ -1,3 +1,4 @@
+import { renderMarkdown } from './markdown';
 import { currentMember } from './auth';
 import { readForm, redirect } from './forms';
 import { escapeHtml, page, profileLink } from './html';
@@ -9,10 +10,10 @@ interface PublicProfile {
 }
 
 function profilePage(profile: PublicProfile, own: boolean, error = '', draft = profile.bio): Response {
-  const bio = profile.bio ? `<p class="story-body">${escapeHtml(profile.bio)}</p>` : '';
+  const bio = profile.bio ? `<div class="markdown">${renderMarkdown(profile.bio)}</div>` : '';
   const edit = own ? `<form class="stack" method="post">
     <label>Bio <textarea name="bio" rows="3" maxlength="280">${escapeHtml(draft)}</textarea></label>
-    <span class="metadata">Up to 280 characters. Your bio is public.</span>
+    <span class="metadata">Public, up to 280 characters. Basic Markdown works here.</span>
     ${error ? `<p role="alert">${escapeHtml(error)}</p>` : ''}
     <button>Save bio</button>
   </form>` : '';

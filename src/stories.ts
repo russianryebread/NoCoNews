@@ -1,3 +1,4 @@
+import { renderMarkdown } from './markdown';
 import { reportLink } from './moderation';
 import type { Member } from './auth';
 import { commentForm, voteControl } from './participation';
@@ -105,7 +106,7 @@ export async function discussion(db: D1Database, id: number, focus: string | nul
     JOIN users u ON u.id = s.author_id WHERE s.state = 'visible' AND s.id = ?`)
     .bind(member?.id ?? null, id).first<Story>();
   if (!story) return page('Story not found', '<h1>Story not found</h1>', 404);
-  const body = story.body ? `<p class="story-body">${escapeHtml(story.body)}</p>` : '';
+  const body = story.body ? `<div class="markdown">${renderMarkdown(story.body)}</div>` : '';
   if (focus && /^\d+$/.test(focus) && Number.isSafeInteger(Number(focus))) {
     const { results } = await db.prepare(`WITH RECURSIVE ancestors(id, parent_id) AS (
        SELECT id, parent_id FROM comments WHERE story_id = ? AND id = ? AND state = 'visible'
@@ -157,7 +158,7 @@ function commentList(comments: Comment[], story: number, member: Member | null):
     return `<ol class="comments">${siblings.map(comment => {
       const text = comment.state === 'visible'
         ? `<div class="metadata">${voteControl('comments', comment.id, comment.voted, Boolean(member?.username && member.id !== comment.author_id))} ${authorLink(comment.username)} · ${comment.vote_count} points${comment.edited_at ? ' · edited' : ''}${reportLink('comment', comment.id, member)}</div>
-           <div class="story-body">${escapeHtml(comment.body)}</div>
+           <div class="markdown">${renderMarkdown(comment.body)}</div>
            ${member?.username && comment.depth < 8 ? `<details><summary>Reply</summary>${commentForm(story, comment.id)}</details>` : ''}`
         : '<p class="metadata">[comment unavailable]</p>';
       return `<li id="comment-${comment.id}">${text}${render(comment.id)}</li>`;

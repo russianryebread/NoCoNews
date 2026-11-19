@@ -8,5 +8,8 @@
     "dev": "wrangler dev",
     "check": "wrangler types && tsc",
     "db:local": "wrangler d1 migrations apply DB --local"
+  },
+  "dependencies": {
+    "marked": "18.2.1"
   }
 }

@@ -14,7 +14,8 @@ export function commentForm(story: number, parent?: number): string {
     <input type="hidden" name="key" value="${crypto.randomUUID()}">
     ${parent ? `<input type="hidden" name="parent" value="${parent}">` : ''}
     <label>${parent ? 'Reply' : 'Comment'} <textarea name="body" maxlength="10000" required rows="3"></textarea></label>
-    <button>Post ${parent ? 'reply' : 'comment'}</button></form>`;
+    <div class="comment-actions"><small class="metadata">Basic Markdown supported.</small>
+    <button>Post ${parent ? 'reply' : 'comment'}</button></div></form>`;
 }
 
 function submissionForm(): Response {
@@ -23,7 +24,7 @@ function submissionForm(): Response {
     <label>Title <input name="title" maxlength="200" required></label>
     <label>Link <input name="url" type="url" maxlength="2048"></label>
     <label>Text <textarea name="body" maxlength="10000" rows="5"></textarea></label>
-    <p class="metadata">Enter a link or write a text post. See the <a href="/guidelines">community guidelines</a>.</p><button>Submit</button></form>`);
+    <p class="metadata">Enter a link or write a text post with optional Markdown. See the <a href="/guidelines">community guidelines</a>.</p><button>Submit</button></form>`);
 }
 
 function requestKey(form: URLSearchParams): string {
