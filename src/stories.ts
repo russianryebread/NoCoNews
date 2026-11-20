@@ -22,11 +22,11 @@ export async function feed(db: D1Database, url: URL, member: Member | null): Pro
 
   // Top uses the chronological fallback until the first ranking snapshot exists.
   const statement = db.prepare(`SELECT ${storyColumns}, EXISTS (SELECT 1 FROM story_votes v WHERE v.story_id = s.id AND v.user_id = ?) AS voted FROM stories s
-    JOIN users u ON u.id = s.author_id WHERE s.state = 'visible'
+    JOIN users u ON u.id = s.author_id WHERE (s.state = 'visible' OR (s.moderation_status = 'shadow' AND s.author_id = ?))
     ${domain ? 'AND s.hostname = ?' : ''}
     ${cursor === null ? '' : 'AND (s.created_at, s.id) < (?, ?)'}
     ORDER BY s.created_at DESC, s.id DESC LIMIT 31`);
-  const bindings: (string | number | null)[] = [member?.id ?? null];
+  const bindings: (string | number | null)[] = [member?.id ?? null, member?.id ?? null];
   if (domain) bindings.push(domain);
   if (cursor !== null) bindings.push(time, id);
   const { results } = await statement.bind(...bindings).all<Story>();
@@ -69,28 +69,28 @@ async function rankedFeed(db: D1Database, url: URL, member: Member | null): Prom
 
 export async function discussion(db: D1Database, id: number, focus: string | null, member: Member | null): Promise<Response> {
   const story = await db.prepare(`SELECT ${storyColumns}, EXISTS (SELECT 1 FROM story_votes v WHERE v.story_id = s.id AND v.user_id = ?) AS voted FROM stories s
-    JOIN users u ON u.id = s.author_id WHERE s.state = 'visible' AND s.id = ?`)
-    .bind(member?.id ?? null, id).first<Story>();
+    JOIN users u ON u.id = s.author_id WHERE (s.state = 'visible' OR (s.moderation_status = 'shadow' AND s.author_id = ?)) AND s.id = ?`)
+    .bind(member?.id ?? null, member?.id ?? null, id).first<Story>();
   if (!story) return page('Story not found', '<h1>Story not found</h1>', 404);
   if (focus && /^\d+$/.test(focus) && Number.isSafeInteger(Number(focus))) {
     const { results } = await db.prepare(`WITH RECURSIVE ancestors(id, parent_id) AS (
-       SELECT id, parent_id FROM comments WHERE story_id = ? AND id = ? AND state = 'visible'
+       SELECT id, parent_id FROM comments WHERE story_id = ? AND id = ? AND (state = 'visible' OR (moderation_status = 'shadow' AND author_id = ?))
        UNION
        SELECT c.id, c.parent_id FROM comments c JOIN ancestors a ON c.id = a.parent_id
        WHERE c.story_id = ?
     )
-    SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, c.state, c.vote_count, c.edited_at, u.username,
+    SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, CASE WHEN c.moderation_status = 'shadow' AND c.author_id = ? THEN 'visible' ELSE c.state END AS state, c.vote_count, c.edited_at, u.username,
       EXISTS (SELECT 1 FROM comment_votes v WHERE v.comment_id = c.id AND v.user_id = ?) AS voted
     FROM ancestors a JOIN comments c ON c.id = a.id JOIN users u ON u.id = c.author_id`)
-      .bind(id, Number(focus), id, member?.id ?? null).all<Comment>();
+      .bind(id, Number(focus), member?.id ?? null, id, member?.id ?? null, member?.id ?? null).all<Comment>();
     if (!results.length) return page('Comment not found', '<h1>Comment not found</h1>', 404);
     return page(story.title, DiscussionView({ story, member, comments: results, focused: true }).toString());
   }
 
-  const { results } = await db.prepare(`SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, c.state,
+  const { results } = await db.prepare(`SELECT c.id, c.author_id, c.parent_id, c.body, c.depth, CASE WHEN c.moderation_status = 'shadow' AND c.author_id = ? THEN 'visible' ELSE c.state END AS state,
     c.vote_count, c.edited_at, u.username,
     EXISTS (SELECT 1 FROM comment_votes v WHERE v.comment_id = c.id AND v.user_id = ?) AS voted FROM comments c JOIN users u ON u.id = c.author_id
-    WHERE c.story_id = ? ORDER BY c.created_at, c.id LIMIT 501`).bind(member?.id ?? null, id).all<Comment>();
+    WHERE c.story_id = ? AND (c.moderation_status IS NOT 'shadow' OR c.author_id = ?) ORDER BY c.created_at, c.id LIMIT 501`).bind(member?.id ?? null, member?.id ?? null, id, member?.id ?? null).all<Comment>();
   return page(story.title, DiscussionView({
     story, member, comments: results.slice(0, 500), truncated: results.length > 500,
   }).toString());

@@ -198,7 +198,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
             {member.role !== 'member' && <section aria-labelledby="account-admin-title">
               <h2 id="account-admin-title">{member.role === 'admin' ? 'Administration' : 'Moderation'}</h2>
               <ul class="account-links">
-                <li><a href="/moderation/reports">Moderation queue</a></li>
+                <li><a href="/moderation">Moderation workspace</a></li>
                 {member.role === 'admin' && <li><a href="/admin/appearance">Appearance</a></li>}
               </ul>
             </section>}

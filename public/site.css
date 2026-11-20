@@ -294,3 +294,7 @@ form .composer button.composer-submit:hover { text-decoration: underline; }
 @media (min-width: 42rem) {
   .account-layout:has(.invite-card) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
 }
+
+.moderation-item { border-top: 1px solid var(--rule); padding-block: .65rem; overflow-wrap: anywhere; }
+.moderation-item details { margin-top: .3rem; }
+.moderation-buttons { display: flex; flex-wrap: wrap; gap: .4rem; }

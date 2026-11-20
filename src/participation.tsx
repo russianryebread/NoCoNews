@@ -43,16 +43,18 @@ async function createStory(db: D1Database, member: Member, form: URLSearchParams
     for (const param of tracking) canonical.searchParams.delete(param);
   }
   const normalizedUrl = canonical?.href ?? null;
-  const [, byKey, byLink] = await db.batch<{ id: number; title: string; url: string | null; body: string | null; state: string }>([
-    db.prepare(`INSERT OR IGNORE INTO stories(author_id,title,url,canonical_url,hostname,body,request_key)
-      SELECT id,?,?,?,?,?,? FROM users WHERE id = ? AND state = 'active' AND username IS NOT NULL`)
+  const [, byKey, byLink] = await db.batch<{ id: number; title: string; url: string | null; body: string | null; state: string; moderation_status: string | null }>([
+    db.prepare(`INSERT OR IGNORE INTO stories(author_id,title,url,canonical_url,hostname,body,request_key,state,moderation_status)
+      SELECT id,?,?,?,?,?,?,
+        CASE WHEN shadow_banned THEN 'hidden' ELSE 'visible' END,
+        CASE WHEN shadow_banned THEN 'shadow' END FROM users WHERE id = ? AND state = 'active' AND username IS NOT NULL`)
       .bind(title, link, normalizedUrl, canonical?.hostname ?? null, body, key, member.id),
-    db.prepare('SELECT id,title,url,body,state FROM stories WHERE author_id = ? AND request_key = ?').bind(member.id, key),
+    db.prepare('SELECT id,title,url,body,state,moderation_status FROM stories WHERE author_id = ? AND request_key = ?').bind(member.id, key),
     db.prepare("SELECT id FROM stories WHERE canonical_url = ? AND state = 'visible'").bind(normalizedUrl),
   ]);
   const own = byKey.results[0];
   if (own && (own.title !== title || own.url !== link || own.body !== body)) return conflict();
-  const destination = own ? (own.state === 'visible' ? own : undefined) : byLink.results[0];
+  const destination = own ? ((own.state === 'visible' || own.moderation_status === 'shadow') ? own : undefined) : byLink.results[0];
   if (!destination) return conflict();
   return redirect(`/stories/${destination.id}`);
 }
@@ -63,17 +65,20 @@ async function createComment(db: D1Database, member: Member, story: number, form
   const parent = parentText ? Number(parentText) : null;
   const body = form.get('body')?.trim() ?? '';
   if (!body || body.length > 10000 || (parent !== null && (!Number.isSafeInteger(parent) || parent <= 0))) throw new InvalidForm();
-  const [, result] = await db.batch<{ id: number; story_id: number; parent_id: number | null; body: string; state: string }>([
-    db.prepare(`INSERT OR IGNORE INTO comments(story_id,parent_id,author_id,body,depth,request_key)
-      SELECT s.id, ?, u.id, ?, coalesce(p.depth + 1, 0), ? FROM stories s JOIN users u ON u.id = ?
-      LEFT JOIN comments p ON p.id = ? AND p.story_id = s.id AND p.state = 'visible' AND p.depth < 8
-      WHERE s.id = ? AND s.state = 'visible' AND u.state = 'active' AND u.username IS NOT NULL
+  const [, result] = await db.batch<{ id: number; story_id: number; parent_id: number | null; body: string; state: string; moderation_status: string | null }>([
+    db.prepare(`INSERT OR IGNORE INTO comments(story_id,parent_id,author_id,body,depth,request_key,state,moderation_status)
+      SELECT s.id, ?, u.id, ?, coalesce(p.depth + 1, 0), ?,
+        CASE WHEN u.shadow_banned OR s.moderation_status = 'shadow' OR p.moderation_status = 'shadow' THEN 'hidden' ELSE 'visible' END,
+        CASE WHEN u.shadow_banned OR s.moderation_status = 'shadow' OR p.moderation_status = 'shadow' THEN 'shadow' END
+      FROM stories s JOIN users u ON u.id = ?
+      LEFT JOIN comments p ON p.id = ? AND p.story_id = s.id AND (p.state = 'visible' OR (p.moderation_status = 'shadow' AND p.author_id = u.id)) AND p.depth < 8
+      WHERE s.id = ? AND (s.state = 'visible' OR (s.moderation_status = 'shadow' AND s.author_id = u.id)) AND u.state = 'active' AND u.username IS NOT NULL
         AND (? IS NULL OR p.id IS NOT NULL)`).bind(parent, body, key, member.id, parent, story, parent),
-    db.prepare('SELECT id,story_id,parent_id,body,state FROM comments WHERE author_id = ? AND request_key = ?').bind(member.id, key),
+    db.prepare('SELECT id,story_id,parent_id,body,state,moderation_status FROM comments WHERE author_id = ? AND request_key = ?').bind(member.id, key),
   ]);
   const comment = result.results[0];
   if (!comment || comment.story_id !== story || comment.parent_id !== parent || comment.body !== body ||
-      comment.state !== 'visible') return conflict();
+      (comment.state !== 'visible' && comment.moderation_status !== 'shadow')) return conflict();
   return redirect(`/stories/${story}?comment=${comment.id}#comment-${comment.id}`);
 }
 
@@ -88,12 +93,13 @@ async function vote(db: D1Database, member: Member, kind: string, id: number, fo
     : `SELECT c.id,c.story_id FROM comments c JOIN stories s ON s.id = c.story_id
        WHERE c.id = ? AND c.state = 'visible' AND s.state = 'visible' AND c.author_id <> ?`;
   const user = "SELECT id FROM users WHERE id = ? AND state = 'active' AND username IS NOT NULL";
+  const voter = user + ' AND shadow_banned = 0';
   const [, result] = await db.batch<{ story_id: number }>([
     state === '1'
       ? db.prepare(`INSERT OR IGNORE INTO ${table}(${targetKey},user_id) SELECT target.id, voter.id
-          FROM (${target}) target CROSS JOIN (${user}) voter`).bind(id, member.id, member.id)
+          FROM (${target}) target CROSS JOIN (${voter}) voter`).bind(id, member.id, member.id)
       : db.prepare(`DELETE FROM ${table} WHERE ${targetKey} IN (SELECT id FROM (${target}))
-          AND user_id IN (${user})`).bind(id, member.id, member.id),
+          AND user_id IN (${voter})`).bind(id, member.id, member.id),
     db.prepare(`SELECT story_id FROM (${target}) CROSS JOIN (${user})`).bind(id, member.id, member.id),
   ]);
   const destination = result.results[0];
