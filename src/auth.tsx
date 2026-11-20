@@ -1,4 +1,4 @@
-import { mailConfigured, sendSignInMail } from './mail';
+import { mailConfigured, sendInvitationMail, sendSignInMail } from './mail';
 import { cookieValue, InvalidForm, readForm, redirect } from './forms';
 import { page, profileLink } from './html';
 import { Author } from './components/content';
@@ -49,28 +49,57 @@ async function allowed(env: AppEnv, email: string): Promise<boolean> {
   return Boolean(await env.DB.prepare('SELECT 1 FROM member_invites WHERE email = ? AND revoked_at IS NULL').bind(email).first());
 }
 
+const inviteMessages = {
+  sent: 'Invitation email sent.',
+  already: 'An invitation email has already been sent to that address.',
+  failed: 'The invitation email could not be sent. Wait a minute, then try the same address again.',
+  invalid: 'Enter a valid email address.',
+  unavailable: 'No email was sent. The address may already have an account, the invite may be restricted, or you may have reached your invitation limit.',
+} as const;
+
+type InviteOutcome = keyof typeof inviteMessages;
+
+function inviteResult(outcome: InviteOutcome): Response {
+  return redirect(`/account?invite=${outcome}#invite`);
+}
+
 async function invite(request: Request, env: AppEnv): Promise<Response> {
   const member = await currentMember(request, env.DB);
   if (!member) return redirect('/login');
   if (!member.username) return redirect('/account');
-  if (env.MAIL_PROVIDER !== 'mailgun' || !mailConfigured(env)) {
-    return page('Invites unavailable', '<h1>Invites are unavailable</h1><p><a href="/account">Back to Account</a></p>', 503);
-  }
+  if (env.MAIL_PROVIDER !== 'mailgun' || !env.PUBLIC_ORIGIN || !mailConfigured(env)) return inviteResult('unavailable');
+
   const form = await readForm(request);
   const email = form.get('email')?.trim().toLowerCase() ?? '';
-  if (!validEmail(email)) {
-    return page('Invalid email', '<h1>Enter a valid email address</h1><p><a href="/account#invite">Try again</a></p>', 400);
+  if (!validEmail(email)) return inviteResult('invalid');
+
+  // Reserve a send before calling Mailgun so duplicate form submissions cannot send twice.
+  const reserved = await env.DB.prepare(`INSERT INTO member_invites(email, inviter_id, email_attempt_at)
+    SELECT ?, u.id, unixepoch() FROM users u
+    WHERE u.id = ? AND u.state = 'active' AND u.username IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM users WHERE email = ?)
+      AND ((SELECT count(*) FROM member_invites WHERE inviter_id = u.id AND created_at > unixepoch() - 86400) < 5
+        OR EXISTS (SELECT 1 FROM member_invites WHERE email = ? AND inviter_id = u.id))
+    ON CONFLICT(email) DO UPDATE SET email_attempt_at = excluded.email_attempt_at
+    WHERE inviter_id = excluded.inviter_id AND revoked_at IS NULL AND email_sent_at IS NULL
+      AND (email_attempt_at IS NULL OR email_attempt_at <= excluded.email_attempt_at - 60)`)
+    .bind(email, member.id, email, email).run();
+
+  if (!reserved.meta.changes) {
+    const sent = await env.DB.prepare(`SELECT 1 FROM member_invites WHERE email = ? AND inviter_id = ?
+      AND email_sent_at IS NOT NULL AND revoked_at IS NULL`).bind(email, member.id).first();
+    return inviteResult(sent ? 'already' : 'unavailable');
   }
 
-  const created = await env.DB.prepare(`INSERT INTO member_invites(email, inviter_id)
-    SELECT ?, id FROM users WHERE id = ? AND state = 'active' AND username IS NOT NULL
-    AND NOT EXISTS (SELECT 1 FROM users WHERE email = ?)
-    AND (SELECT count(*) FROM member_invites WHERE inviter_id = ? AND created_at > unixepoch() - 86400) < 5
-    ON CONFLICT(email) DO NOTHING`).bind(email, member.id, email, member.id).run();
-  if (!created.meta.changes && !await allowed(env, email)) {
-    return page('Invite unavailable', '<h1>Invite unavailable</h1><p>An invite may already be restricted, or you may have reached the limit of five new invites per 24 hours.</p><p><a href="/account#invite">Back to Account</a></p>', 429);
+  try {
+    await sendInvitationMail(env, email, env.SITE_NAME, member.username, new URL('/login', env.PUBLIC_ORIGIN));
+  } catch {
+    console.error({ event: 'invitation_email_failed' });
+    return inviteResult('failed');
   }
-  return redirect('/account?invited=1#invite');
+  await env.DB.prepare('UPDATE member_invites SET email_sent_at = unixepoch() WHERE email = ? AND inviter_id = ?')
+    .bind(email, member.id).run();
+  return inviteResult('sent');
 }
 
 async function requestLink(request: Request, env: AppEnv, form: URLSearchParams): Promise<Response> {
@@ -147,6 +176,15 @@ async function confirm(env: AppEnv, request: Request, form: URLSearchParams): Pr
   return response;
 }
 
+function InviteFeedback({ outcome }: { outcome: string | null }) {
+  if (outcome && Object.hasOwn(inviteMessages, outcome)) {
+    return <p role={outcome === 'sent' || outcome === 'already' ? 'status' : 'alert'}>
+      {inviteMessages[outcome as InviteOutcome]}
+    </p>;
+  }
+  return <p>Enter their email address. We’ll send them an invitation with a link to set up their account.</p>;
+}
+
 export async function auth(request: Request, env: AppEnv, url: URL): Promise<Response | undefined> {
   if (request.method === 'GET') {
     if (url.pathname === '/login') {
@@ -214,9 +252,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
           {member.username && env.MAIL_PROVIDER === 'mailgun' && mailConfigured(env) &&
             <section id="invite" class="invite-card" aria-labelledby="invite-title">
               <h2 id="invite-title">Invite someone</h2>
-              {url.searchParams.get('invited') === '1'
-                ? <p role="status">Invite ready. Share the <a href="/login">sign-in page</a> with them and tell them to use the email address you invited.</p>
-                : <p>Enter their email, then share the <a href="/login">sign-in page</a> so they can request a link.</p>}
+              <InviteFeedback outcome={url.searchParams.get('invite')} />
               <StackForm action="/account/invite">
                 <label>Email address <input type="email" name="email" autocomplete="off" maxlength={254} required /></label>
                 <button>Invite</button>

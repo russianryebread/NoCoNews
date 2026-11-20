@@ -12,13 +12,18 @@ export function mailConfigured(env: MailEnv): boolean {
   return env.MAIL_PROVIDER === 'cloudflare' && Boolean(env.EMAIL);
 }
 
-export async function sendSignInMail(env: MailEnv, to: string, link: URL): Promise<void> {
-  const message = {
-    from: env.MAIL_FROM,
-    to,
-    subject: 'Your sign-in link',
-    text: `Open this link within 15 minutes to sign in:\n${link.href}`,
-  };
+export function sendSignInMail(env: MailEnv, to: string, link: URL): Promise<void> {
+  return sendMail(env, to, 'Your sign-in link',
+    `Open this link within 15 minutes to sign in:\n${link.href}`);
+}
+
+export function sendInvitationMail(env: MailEnv, to: string, siteName: string, inviter: string, link: URL): Promise<void> {
+  return sendMail(env, to, `You're invited to ${siteName}`,
+    `${inviter} invited you to join ${siteName}.\n\nOpen ${link.href} and enter this email address. We'll send you a sign-in link. After you confirm, choose a username to finish setting up your account.`);
+}
+
+async function sendMail(env: MailEnv, to: string, subject: string, text: string): Promise<void> {
+  const message = { from: env.MAIL_FROM, to, subject, text };
   if (env.MAIL_PROVIDER === 'cloudflare' && env.EMAIL) {
     await env.EMAIL.send(message);
     return;
