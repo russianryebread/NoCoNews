@@ -24,7 +24,7 @@ export function page(title: string, content: string, status = 200): Response {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Content-Security-Policy': "default-src 'none'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      'Content-Security-Policy': "default-src 'none'; style-src 'self'; font-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
       // Native POSTs need a serialized Origin. Keep paths and query strings out of referrers.
       'Referrer-Policy': 'strict-origin',
       'X-Content-Type-Options': 'nosniff',

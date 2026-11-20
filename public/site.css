@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Libre Baskerville";
+  src: url("/fonts/libre-baskerville.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
   font: 100%/1.5 system-ui, sans-serif;
@@ -6,6 +14,7 @@
   --muted: #565b53;
   --rule: #d8dad3;
   --accent: #355645;
+  --heading-font: "Libre Baskerville", Georgia, serif;
 }
 
 body {
@@ -26,6 +35,7 @@ header {
 a { color: var(--accent); }
 .brand { font-weight: 700; text-decoration: none; }
 nav a { display: inline-block; padding: .25rem; font-size: .875rem; }
+h1, h2, h3, h4, h5, h6 { font-family: var(--heading-font); }
 h1 { font-size: 1.125rem; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
@@ -169,7 +179,7 @@ form .markdown-field textarea {
 .discussion-story { padding-block: 0 .75rem; }
 .discussion-story h1 {
   margin: 0 0 .4rem;
-  font: 700 clamp(1.6rem, 4vw, 2.2rem)/1.15 Georgia, serif;
+  font: 700 clamp(1.6rem, 4vw, 2.2rem)/1.15 var(--heading-font);
   letter-spacing: -.025em;
 }
 .discussion-story .headline { font-weight: inherit; text-decoration: none; }
