@@ -1,6 +1,6 @@
 import type { Member } from './auth';
 import { Author, MarkdownBody, Publisher, RelativeTime } from './components/content';
-import { MarkdownField, StackForm } from './components/form';
+import { Composer, StackForm } from './components/form';
 
 export interface Story {
   author_id: number;
@@ -85,10 +85,9 @@ function CommentForm({ storyId, parentId }: { storyId: number; parentId?: number
     action={`/stories/${storyId}/comments`}>
     <input type="hidden" name="key" value={crypto.randomUUID()} />
     {parentId && <input type="hidden" name="parent" value={parentId} />}
-    <MarkdownField id={fieldId} name="body" rows={parentId ? 2 : 3} maxLength={10000} required
+    <Composer id={fieldId} name="body" rows={parentId ? 2 : 3} maxLength={10000} required
       label={parentId ? 'Write a reply' : 'Add a comment'} placeholder={parentId ? undefined : 'Add a comment…'}
-      hint={parentId ? undefined : 'Basic Markdown supported.'}
-      footer={<button>{parentId ? 'Post reply' : 'Post comment'}</button>} />
+      submit={parentId ? 'Post reply' : 'Post comment'} />
   </StackForm>;
 }
 

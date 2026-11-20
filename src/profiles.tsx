@@ -1,5 +1,5 @@
 import { MarkdownBody } from './components/content';
-import { MarkdownField, StackForm } from './components/form';
+import { Composer, StackForm } from './components/form';
 import { currentMember } from './auth';
 import { readForm, redirect } from './forms';
 import { page, profileLink } from './html';
@@ -15,10 +15,9 @@ function profilePage(profile: PublicProfile, own: boolean, error = '', draft = p
     <h1>{profile.username}</h1>
     {profile.bio && <MarkdownBody source={profile.bio} />}
     {own && <StackForm className="markdown-form editor-panel">
-      <MarkdownField id="bio-source" name="bio" label="Edit bio" rows={3} maxLength={280} value={draft}
-        hint="Public, up to 280 characters. Basic Markdown supported." />
+      <Composer id="bio-source" name="bio" label="Edit bio" rows={3} maxLength={280} value={draft}
+        hint="Your bio is public." submit="Save bio" />
       {error && <p role="alert">{error}</p>}
-      <button>Save bio</button>
     </StackForm>}
   </>).toString(), error ? 400 : 200);
 }

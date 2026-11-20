@@ -1,4 +1,4 @@
-import { MarkdownField, StackForm } from './components/form';
+import { Composer, StackForm } from './components/form';
 import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
 import { page } from './html';
@@ -10,9 +10,8 @@ function submissionForm(): Response {
       <input type="hidden" name="key" value={crypto.randomUUID()} />
       <label>Title <input name="title" maxlength={200} required /></label>
       <label>Link <input name="url" type="url" maxlength={2048} /></label>
-      <MarkdownField id="story-source" name="body" label="Text" rows={5} maxLength={10000}
-        hint={<>Enter a link or write a text post with optional Markdown. See the <a href="/guidelines">community guidelines</a>.</>} />
-      <button>Submit</button>
+      <Composer submit="Submit" id="story-source" name="body" label="Text" rows={5} maxLength={10000}
+        hint={<>Enter a link or write a text post. See the <a href="/guidelines">community guidelines</a>.</>} />
     </StackForm>
   </>).toString());
 }

@@ -158,8 +158,9 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
         </section>
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
       </>).toString());
-      response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') +
-        "; script-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com");
+      response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy')?.replace(
+        "script-src 'self'", "script-src 'self' https://challenges.cloudflare.com") +
+        "; frame-src https://challenges.cloudflare.com");
       return response;
     }
     if (url.pathname === '/auth/confirm') {

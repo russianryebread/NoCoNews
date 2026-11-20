@@ -13,6 +13,7 @@ export function page(title: string, content: string, status = 200, previewStyles
 <title>${escapeHtml(title)}</title>
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/theme.css">
+<script src="/composer.js" defer></script>
 ${previewStylesheet ? `<link rel="stylesheet" href="${escapeHtml(previewStylesheet)}">` : ''}
 </head>
 <body>
@@ -26,7 +27,7 @@ ${previewStylesheet ? `<link rel="stylesheet" href="${escapeHtml(previewStyleshe
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Content-Security-Policy': "default-src 'none'; style-src 'self'; font-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
       // Native POSTs need a serialized Origin. Keep paths and query strings out of referrers.
       'Referrer-Policy': 'strict-origin',
       'X-Content-Type-Options': 'nosniff',

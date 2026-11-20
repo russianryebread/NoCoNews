@@ -2,7 +2,7 @@ import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
 import { page } from './html';
 import { MarkdownBody } from './components/content';
-import { HiddenTarget, MarkdownField, ModeratorReason, StackForm } from './components/form';
+import { HiddenTarget, Composer, ModeratorReason, StackForm } from './components/form';
 
 const reasons = ['Spam', 'Abuse', 'Duplicate', 'Off-topic', 'Other'];
 
@@ -25,10 +25,9 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
       <h1>Community guidelines</h1>
       {text === null ? <p>Community guidelines will appear here when published.</p> : <MarkdownBody source={text} />}
       {member?.role === 'admin' && <StackForm className="markdown-form editor-panel" action="/admin/guidelines">
-        <MarkdownField id="guidelines-source" name="guidelines" label="Edit community guidelines"
+        <Composer id="guidelines-source" name="guidelines" label="Edit community guidelines"
           rows={8} maxLength={10000} required value={text ?? ''}
-          hint="Basic Markdown supported. Links and images display as text." />
-        <button>Publish</button>
+          submit="Publish" />
       </StackForm>}
     </>).toString());
   }
@@ -56,7 +55,7 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
     return page('Report', (<><h1>Report {type}</h1><StackForm action="/reports">
       <HiddenTarget type={type} id={id} />
       <label>Reason <select name="reason">{reasons.map(reason => <option>{reason}</option>)}</select></label>
-      <label>Note <textarea name="note" maxlength={2000} rows={4} /></label><button>Send report</button>
+      <Composer id="report-note" name="note" label="Note" rows={4} maxLength={2000} markdown={false} submit="Send report" />
     </StackForm></>).toString());
   }
   if (request.method === 'POST' && path === '/reports') {
