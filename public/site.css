@@ -26,7 +26,7 @@
   --accent-hover: #294437;
   --surface: #fffefa;
   --wash: #eef1e9;
-  --field-border: #858a81;
+  --field-border: rgba(200, 200, 200, 0.5);
   --muted: #565b53;
   --rule: #d8dad3;
   --accent: #355645;
