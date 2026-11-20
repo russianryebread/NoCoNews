@@ -144,7 +144,6 @@ form:not(.inline) button:hover { background: var(--wash); }
 }
 .icon-link:hover, .icon-link:focus-visible { color: var(--secondary); background: var(--canvas); }
 .report-link:hover, .report-link:focus-visible { color: light-dark(#a13f2b, #ffb09b); background: light-dark(#f6ece6, #462c27); }
-.markdown-form { box-sizing: border-box; width: min(100%, 42rem); }
 .composer-field { display: grid; gap: .35rem; min-width: 0; width: 100%; }
 .composer-field label { font-weight: 600; }
 .composer {
@@ -207,15 +206,7 @@ form .composer button.composer-submit {
   white-space: nowrap;
 }
 form .composer button.composer-submit:hover { text-decoration: underline; }
-.editor-panel {
-  margin-block-start: 1.5rem;
-  padding: clamp(.75rem, 3vw, 1.25rem);
-  border: 1px solid var(--rule);
-  border-radius: .625rem;
-  background: var(--wash);
-  box-shadow: 0 1px 3px rgb(37 39 34 / 5%);
-}
-.comment-form, .story-form { width: min(100%, 32rem); }
+.composer-editor { margin-block-start: 1.25rem; }
 .comment-form { gap: .35rem; margin-block-start: 0; }
 .markdown { overflow-wrap: anywhere; }
 .markdown > :first-child { margin-block-start: 0; }

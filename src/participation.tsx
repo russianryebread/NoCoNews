@@ -6,11 +6,11 @@ import { page } from './html';
 function submissionForm(): Response {
   return page('Submit', (<>
     <h1>Submit a story</h1>
-    <StackForm className="markdown-form story-form" action="/stories">
+    <StackForm action="/stories">
       <input type="hidden" name="key" value={crypto.randomUUID()} />
       <label>Title <input name="title" maxlength={200} required /></label>
       <label>Link <input name="url" type="url" maxlength={2048} /></label>
-      <Composer submit="Submit" id="story-source" name="body" label="Text" rows={5} maxLength={10000}
+      <Composer submit="Submit" id="story-source" name="body" label="Text" showLabel rows={5} maxLength={10000}
         hint={<>Enter a link or write a text post. See the <a href="/guidelines">community guidelines</a>.</>} />
     </StackForm>
   </>).toString());

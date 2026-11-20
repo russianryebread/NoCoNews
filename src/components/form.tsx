@@ -6,16 +6,16 @@ export function StackForm({ action, className, children }: {
   return <form class={className ? `stack ${className}` : 'stack'} method="post" action={action}>{children}</form>;
 }
 
-export function Composer({ id, name, label, placeholder, rows, maxLength, required, value, hint, submit, markdown = true }: {
-  id: string; name: string; label: string; placeholder?: string; rows: number; maxLength: number;
+export function Composer({ id, name, label, showLabel = false, placeholder, rows, maxLength, required, value, hint, submit, markdown = true }: {
+  id: string; name: string; label: string; showLabel?: boolean; placeholder?: string; rows: number; maxLength: number;
   required?: boolean; value?: string; hint?: Child; submit: string; markdown?: boolean;
 }) {
   const hintId = `${id}-hint`;
   return <div class="composer-field">
-    {!placeholder && <label for={id}>{label}</label>}
+    {showLabel && <label for={id}>{label}</label>}
     <div class="composer" data-composer="">
       <textarea id={id} name={name} rows={rows} maxlength={maxLength} required={required}
-        aria-label={placeholder ? label : undefined} placeholder={placeholder}
+        aria-label={showLabel ? undefined : label} placeholder={placeholder}
         aria-describedby={hint ? hintId : undefined}>{value}</textarea>
       <div class="composer-toolbar">
         {markdown && <details class="composer-help">

@@ -24,8 +24,8 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
     return page('Guidelines', (<>
       <h1>Community guidelines</h1>
       {text === null ? <p>Community guidelines will appear here when published.</p> : <MarkdownBody source={text} />}
-      {member?.role === 'admin' && <StackForm className="markdown-form editor-panel" action="/admin/guidelines">
-        <Composer id="guidelines-source" name="guidelines" label="Edit community guidelines"
+      {member?.role === 'admin' && <StackForm className="composer-editor" action="/admin/guidelines">
+        <Composer id="guidelines-source" name="guidelines" label="Edit community guidelines" placeholder="Write community guidelines…"
           rows={8} maxLength={10000} required value={text ?? ''}
           submit="Publish" />
       </StackForm>}
@@ -55,7 +55,7 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
     return page('Report', (<><h1>Report {type}</h1><StackForm action="/reports">
       <HiddenTarget type={type} id={id} />
       <label>Reason <select name="reason">{reasons.map(reason => <option>{reason}</option>)}</select></label>
-      <Composer id="report-note" name="note" label="Note" rows={4} maxLength={2000} markdown={false} submit="Send report" />
+      <Composer id="report-note" name="note" label="Note" showLabel rows={4} maxLength={2000} markdown={false} submit="Send report" />
     </StackForm></>).toString());
   }
   if (request.method === 'POST' && path === '/reports') {

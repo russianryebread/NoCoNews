@@ -81,12 +81,12 @@ export function StoryRow({ story, member, heading = false }: { story: Story; mem
 
 function CommentForm({ storyId, parentId }: { storyId: number; parentId?: number }) {
   const fieldId = parentId ? `reply-${parentId}-body` : 'comment-body';
-  return <StackForm className={`markdown-form comment-form${parentId ? ' reply-form' : ''}`}
+  return <StackForm className={`comment-form${parentId ? ' reply-form' : ''}`}
     action={`/stories/${storyId}/comments`}>
     <input type="hidden" name="key" value={crypto.randomUUID()} />
     {parentId && <input type="hidden" name="parent" value={parentId} />}
     <Composer id={fieldId} name="body" rows={parentId ? 2 : 3} maxLength={10000} required
-      label={parentId ? 'Write a reply' : 'Add a comment'} placeholder={parentId ? undefined : 'Add a comment…'}
+      label={parentId ? 'Write a reply' : 'Add a comment'} placeholder={parentId ? 'Write a reply…' : 'Add a comment…'}
       submit={parentId ? 'Post reply' : 'Post comment'} />
   </StackForm>;
 }

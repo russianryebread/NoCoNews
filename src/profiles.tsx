@@ -14,8 +14,8 @@ function profilePage(profile: PublicProfile, own: boolean, error = '', draft = p
   return page(profile.username, (<>
     <h1>{profile.username}</h1>
     {profile.bio && <MarkdownBody source={profile.bio} />}
-    {own && <StackForm className="markdown-form editor-panel">
-      <Composer id="bio-source" name="bio" label="Edit bio" rows={3} maxLength={280} value={draft}
+    {own && <StackForm className="composer-editor">
+      <Composer id="bio-source" name="bio" label="Edit bio" placeholder="Write a short bio…" rows={3} maxLength={280} value={draft}
         hint="Your bio is public." submit="Save bio" />
       {error && <p role="alert">{error}</p>}
     </StackForm>}
