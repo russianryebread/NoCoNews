@@ -183,24 +183,39 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
       if (!member) return redirect('/login');
       return page('Account', (<>
         <h1>Account</h1>
-        {url.searchParams.has('reported') && <p>Report received.</p>}
-        {member.role !== 'member' && <p><a href="/moderation/reports">Moderation queue</a></p>}
-        {member.role === 'admin' && <p><a href="/admin/appearance">Appearance</a></p>}
-        {member.username
-          ? <p><Author username={member.username} /> · <a href={profileLink(member.username)}>Edit bio</a></p>
-          : <StackForm action="/account"><label>Username <input name="username" required maxlength={24} /></label><button>Save</button></StackForm>}
-        {member.username && env.MAIL_PROVIDER === 'mailgun' && mailConfigured(env) &&
-          <section id="invite" aria-labelledby="invite-title">
-            <h2 id="invite-title">Invite someone</h2>
-            {url.searchParams.get('invited') === '1'
-              ? <p role="status">Invite ready. Share the <a href="/login">sign-in page</a> with them and tell them to use the email address you invited.</p>
-              : <p class="metadata">After inviting someone, share the sign-in page with them.</p>}
-            <StackForm action="/account/invite">
-              <label>Email address <input type="email" name="email" maxlength={254} required /></label>
-              <button>Invite</button>
-            </StackForm>
-          </section>}
-        <form method="post" action="/auth/logout"><button>Sign out</button></form>
+        {url.searchParams.has('reported') && <p role="status">Report received.</p>}
+        <div class="account-layout">
+          <div class="account-settings">
+            <section aria-labelledby="account-profile-title">
+              <h2 id="account-profile-title">Profile</h2>
+              {member.username
+                ? <p><Author username={member.username} /> · <a href={profileLink(member.username)}>Edit bio</a></p>
+                : <StackForm action="/account">
+                    <label>Username <input name="username" required maxlength={24} /></label>
+                    <button>Save username</button>
+                  </StackForm>}
+            </section>
+            {member.role !== 'member' && <section aria-labelledby="account-admin-title">
+              <h2 id="account-admin-title">{member.role === 'admin' ? 'Administration' : 'Moderation'}</h2>
+              <ul class="account-links">
+                <li><a href="/moderation/reports">Moderation queue</a></li>
+                {member.role === 'admin' && <li><a href="/admin/appearance">Appearance</a></li>}
+              </ul>
+            </section>}
+            <form method="post" action="/auth/logout"><button>Sign out</button></form>
+          </div>
+          {member.username && env.MAIL_PROVIDER === 'mailgun' && mailConfigured(env) &&
+            <section id="invite" class="invite-card" aria-labelledby="invite-title">
+              <h2 id="invite-title">Invite someone</h2>
+              {url.searchParams.get('invited') === '1'
+                ? <p role="status">Invite ready. Share the <a href="/login">sign-in page</a> with them and tell them to use the email address you invited.</p>
+                : <p>Enter their email, then share the <a href="/login">sign-in page</a> so they can request a link.</p>}
+              <StackForm action="/account/invite">
+                <label>Email address <input type="email" name="email" autocomplete="off" maxlength={254} required /></label>
+                <button>Invite</button>
+              </StackForm>
+            </section>}
+        </div>
       </>).toString());
     }
   }

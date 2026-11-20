@@ -272,3 +272,25 @@ form .composer button.composer-submit:hover { text-decoration: underline; }
   .composer-help summary, form .composer button.composer-submit { min-height: 2.75rem; }
   .composer-help summary { min-width: 2.75rem; }
 }
+
+.account-layout { display: grid; gap: 1.5rem; align-items: start; }
+.account-layout h2 { margin: 0 0 .35rem; }
+.account-layout p { margin: 0; }
+.account-settings { display: grid; gap: 1.25rem; }
+.account-links { list-style: none; padding: 0; margin: 0; }
+.account-links li + li { margin-top: .3rem; }
+.invite-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--rule);
+  border-radius: .75rem;
+  background: var(--surface);
+}
+.invite-card p { color: var(--muted); font-size: .875rem; }
+.invite-card .stack { margin: .85rem 0 0; }
+.invite-card label { width: 100%; font-size: .875rem; }
+.invite-card button { justify-self: end; }
+
+@media (min-width: 42rem) {
+  .account-layout:has(.invite-card) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+}
