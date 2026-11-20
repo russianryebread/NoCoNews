@@ -1,4 +1,12 @@
 @font-face {
+  font-family: Inter;
+  src: url("/fonts/inter.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Libre Baskerville";
   src: url("/fonts/libre-baskerville.woff2") format("woff2");
   font-style: normal;
@@ -8,7 +16,7 @@
 
 :root {
   color-scheme: light;
-  font: 100%/1.5 system-ui, sans-serif;
+  font: 100%/1.5 Inter, system-ui, sans-serif;
   background: #faf9f6;
   color: #252722;
   --muted: #565b53;
@@ -92,7 +100,7 @@ form:not(.inline) button:hover { background: #e7ebe3; }
 .auth-panel {
   box-sizing: border-box;
   width: min(100%, 27rem);
-  margin-block: clamp(1.25rem, 5vw, 3rem);
+  margin: clamp(1.25rem, 5vw, 3rem) auto;
   padding: 1.5rem;
   border: 1px solid var(--rule);
   border-radius: .75rem;
