@@ -38,11 +38,15 @@ function validEmail(email: string): boolean {
   return email.length <= 254 && /^[^\s@<>,;:"()\[\]\\]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(email);
 }
 
+function configuredRecipient(env: AppEnv, email: string): boolean {
+  return env.LOGIN_RECIPIENTS.split(',').some(recipient => recipient.trim().toLowerCase() === email);
+}
+
 async function allowed(env: AppEnv, email: string): Promise<boolean> {
   if (!validEmail(email)) return false;
-  if (env.LOGIN_RECIPIENTS.split(',').some(recipient => recipient.trim().toLowerCase() === email)) return true;
+  if (configuredRecipient(env, email)) return true;
   if (env.MAIL_PROVIDER !== 'mailgun') return false;
-  return Boolean(await env.DB.prepare('SELECT 1 FROM member_invites WHERE email = ?').bind(email).first());
+  return Boolean(await env.DB.prepare('SELECT 1 FROM member_invites WHERE email = ? AND revoked_at IS NULL').bind(email).first());
 }
 
 async function invite(request: Request, env: AppEnv): Promise<Response> {
@@ -60,10 +64,11 @@ async function invite(request: Request, env: AppEnv): Promise<Response> {
 
   const created = await env.DB.prepare(`INSERT INTO member_invites(email, inviter_id)
     SELECT ?, id FROM users WHERE id = ? AND state = 'active' AND username IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM users WHERE email = ?)
     AND (SELECT count(*) FROM member_invites WHERE inviter_id = ? AND created_at > unixepoch() - 86400) < 5
-    ON CONFLICT(email) DO NOTHING`).bind(email, member.id, member.id).run();
+    ON CONFLICT(email) DO NOTHING`).bind(email, member.id, email, member.id).run();
   if (!created.meta.changes && !await allowed(env, email)) {
-    return page('Invite unavailable', '<h1>Invite unavailable</h1><p>You can create up to five invites every 24 hours.</p><p><a href="/account#invite">Back to Account</a></p>', 429);
+    return page('Invite unavailable', '<h1>Invite unavailable</h1><p>An invite may already be restricted, or you may have reached the limit of five new invites per 24 hours.</p><p><a href="/account#invite">Back to Account</a></p>', 429);
   }
   return redirect('/account?invited=1#invite');
 }
@@ -123,7 +128,9 @@ async function confirm(env: AppEnv, request: Request, form: URLSearchParams): Pr
   if (!challenge || !await allowed(env, challenge.email)) return expired();
 
   const session = token();
-  const match = 'SELECT email FROM login_challenges WHERE digest = ? AND expires_at > unixepoch()';
+  const match = `SELECT email FROM login_challenges WHERE digest = ? AND expires_at > unixepoch()
+    ${configuredRecipient(env, challenge.email) ? '' : `AND EXISTS (
+      SELECT 1 FROM member_invites WHERE email = login_challenges.email AND revoked_at IS NULL)`}`;
   const results = await env.DB.batch([
     env.DB.prepare(`INSERT OR IGNORE INTO users(email) ${match}`).bind(hashed),
     env.DB.prepare(`INSERT OR IGNORE INTO admin_bootstrap(id, user_id) SELECT 1, id FROM users

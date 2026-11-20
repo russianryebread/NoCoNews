@@ -1,10 +1,10 @@
 import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
 import { page, profileLink } from './html';
-import { MarkdownBody } from './components/content';
+import { Author, MarkdownBody, RelativeTime } from './components/content';
 import { HiddenTarget, Composer, ModeratorReason, StackForm } from './components/form';
 
-const moderationNav = () => <nav aria-label="Moderation"><a href="/moderation">Posts</a> <a href="/moderation?type=comment">Comments</a> <a href="/moderation?type=user">Accounts</a> <a href="/moderation/reports">Reports</a></nav>;
+const moderationNav = () => <nav aria-label="Moderation"><a href="/moderation">Posts</a> <a href="/moderation?type=comment">Comments</a> <a href="/moderation?type=user">Accounts</a> <a href="/moderation/invitations">Invitations</a> <a href="/moderation/reports">Reports</a></nav>;
 
 const reasons = ['Spam', 'Abuse', 'Duplicate', 'Off-topic', 'Other'];
 
@@ -19,7 +19,7 @@ const staff = "SELECT id FROM users WHERE id = ? AND state = 'active' AND role I
 
 export async function moderation(request: Request, db: D1Database, url: URL): Promise<Response | undefined> {
   const path = url.pathname;
-  if (!['/moderation', '/moderation/accounts', '/guidelines', '/admin/guidelines', '/report', '/reports', '/moderation/reports', '/moderation/actions'].includes(path)) return;
+  if (!['/moderation', '/moderation/accounts', '/moderation/invitations', '/guidelines', '/admin/guidelines', '/report', '/reports', '/moderation/reports', '/moderation/actions'].includes(path)) return;
   const member = await currentMember(request, db);
   if (request.method === 'GET' && path === '/guidelines') {
     const text = await db.prepare('SELECT guidelines FROM community_settings WHERE id = 1').first<string>('guidelines');
@@ -82,6 +82,10 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
   }
   if (member.role === 'member') return denied();
 
+  if (path === '/moderation/invitations') {
+    if (request.method === 'GET') return invitations(db, member, url);
+    if (request.method === 'POST') return manageInvitation(db, member, await readForm(request));
+  }
   if (request.method === 'GET' && path === '/moderation') return workspace(db, member, url);
   if (request.method === 'POST' && path === '/moderation/accounts') return moderateAccount(db, member, await readForm(request));
 
@@ -185,13 +189,16 @@ async function workspace(db: D1Database, member: Member, url: URL): Promise<Resp
   if ((type !== 'story' && type !== 'comment' && type !== 'user') || !Number.isSafeInteger(before) || before < 1) throw new InvalidForm();
 
   if (type === 'user') {
-    const { results } = await db.prepare(`SELECT id, username, role, state, shadow_banned FROM users
-      WHERE id < ? AND EXISTS (${staff}) ORDER BY id DESC LIMIT 26`).bind(before, member.id)
-      .all<{ id: number; username: string | null; role: string; state: string; shadow_banned: number }>();
+    const { results } = await db.prepare(`SELECT u.id, u.username, u.role, u.state, u.shadow_banned, inviter.username AS invited_by
+      FROM users u LEFT JOIN member_invites i ON i.email = u.email AND i.created_at <= u.created_at
+      LEFT JOIN users inviter ON inviter.id = i.inviter_id
+      WHERE u.id < ? AND EXISTS (${staff}) ORDER BY u.id DESC LIMIT 26`).bind(before, member.id)
+      .all<{ id: number; username: string | null; role: string; state: string; shadow_banned: number; invited_by: string | null }>();
     return page('Moderation', (<><h1>Moderation</h1>{moderationNav()}<h2>Accounts</h2>
       {results.slice(0, 25).map(user => <article class="moderation-item">
         <strong>{user.username ? <a href={profileLink(user.username)}>{user.username}</a> : `Account #${user.id}`}</strong>
-        <div class="metadata">{user.role} · {user.shadow_banned ? 'Shadow-banned' : user.state}</div>
+        <div class="metadata">{user.role} · {user.shadow_banned ? 'Shadow-banned' : user.state}
+          {user.invited_by && <> · Invited by <Author username={user.invited_by} /></>}</div>
         {user.role === 'member' && <details><summary>Manage account</summary>
           <StackForm action="/moderation/accounts">
             <input type="hidden" name="id" value={user.id} />
@@ -256,4 +263,84 @@ async function moderateAccount(db: D1Database, member: Member, form: URLSearchPa
   ]);
   if (!audit.meta.changes) return page('Action unavailable', '<h1>Account action unavailable</h1>', 409);
   return redirect('/moderation?type=user');
+}
+
+interface Invitation {
+  email: string;
+  created_at: number;
+  inviter: string | null;
+  account_id: number | null;
+  account_name: string | null;
+  revoked_at: number | null;
+  revoked_by: string | null;
+}
+
+async function invitations(db: D1Database, member: Member, url: URL): Promise<Response> {
+  const status = url.searchParams.get('status') ?? 'all';
+  const filters = {
+    all: '',
+    pending: 'AND i.revoked_at IS NULL AND recipient.id IS NULL',
+    accepted: 'AND recipient.id IS NOT NULL',
+    revoked: 'AND i.revoked_at IS NOT NULL',
+  };
+  if (status !== 'all' && status !== 'pending' && status !== 'accepted' && status !== 'revoked') throw new InvalidForm();
+
+  const time = Number(url.searchParams.get('before') ?? Number.MAX_SAFE_INTEGER);
+  const email = url.searchParams.get('email') ?? '';
+  if (!Number.isSafeInteger(time) || time < 1 || email.length > 254) throw new InvalidForm();
+
+  const { results } = await db.prepare(`SELECT i.email, i.created_at, i.revoked_at, inviter.username AS inviter,
+      recipient.id AS account_id, recipient.username AS account_name, revoker.username AS revoked_by
+    FROM member_invites i JOIN users inviter ON inviter.id = i.inviter_id
+    LEFT JOIN users recipient ON recipient.email = i.email
+    LEFT JOIN users revoker ON revoker.id = i.revoked_by
+    WHERE (i.created_at, i.email) < (?, ?) AND EXISTS (${staff}) ${filters[status]}
+    ORDER BY i.created_at DESC, i.email DESC LIMIT 26`).bind(time, email, member.id).all<Invitation>();
+  const next = results[24];
+  return page('Invitations', (<>
+    <h1>Moderation</h1>{moderationNav()}
+    <h2>Invitations</h2>
+    <nav aria-label="Invitation status">{(['all', 'pending', 'accepted', 'revoked'] as const).map(filter =>
+      <a href={`/moderation/invitations?status=${filter}`} aria-current={filter === status ? 'page' : undefined}>
+        {filter[0].toUpperCase() + filter.slice(1)}
+      </a>)}</nav>
+    {!results.length && <p>No invitations in this view.</p>}
+    {results.slice(0, 25).map(item => <article class="moderation-item">
+      <strong>{item.email}</strong>
+      <div class="metadata">
+        {item.account_id ? 'Accepted' : item.revoked_at ? 'Revoked' : 'Pending'}
+        {' · Invited by '}<Author username={item.inviter} /> · <RelativeTime seconds={item.created_at} />
+      </div>
+      {item.account_name && <p>Account: <Author username={item.account_name} /></p>}
+      {item.revoked_at && <p class="metadata">Revoked by <Author username={item.revoked_by} /> · <RelativeTime seconds={item.revoked_at} /></p>}
+      {!item.account_id && <StackForm action="/moderation/invitations">
+        <input type="hidden" name="email" value={item.email} />
+        <button name="action" value={item.revoked_at ? 'restore' : 'revoke'}>
+          {item.revoked_at ? 'Restore invite' : 'Revoke invite'}
+        </button>
+      </StackForm>}
+    </article>)}
+    {results.length > 25 && <p>
+      <a href={`/moderation/invitations?${new URLSearchParams({ status, before: String(next.created_at), email: next.email })}`}>Older invitations</a>
+    </p>}
+  </>).toString());
+}
+
+async function manageInvitation(db: D1Database, member: Member, form: URLSearchParams): Promise<Response> {
+  const email = form.get('email') ?? '';
+  const action = form.get('action');
+  if (!email || email.length > 254 || (action !== 'revoke' && action !== 'restore')) throw new InvalidForm();
+  const revoke = action === 'revoke';
+  const [change] = await db.batch([
+    db.prepare(`UPDATE member_invites SET revoked_at = ${revoke ? 'unixepoch()' : 'NULL'}, revoked_by = ?
+      WHERE email = ? AND revoked_at IS ${revoke ? '' : 'NOT '}NULL
+      AND NOT EXISTS (SELECT 1 FROM users WHERE email = member_invites.email)
+      AND EXISTS (${staff})`).bind(revoke ? member.id : null, email, member.id),
+    ...(revoke ? [db.prepare(`DELETE FROM login_challenges WHERE email = ?
+      AND EXISTS (SELECT 1 FROM member_invites WHERE email = ? AND revoked_at IS NOT NULL)
+      AND NOT EXISTS (SELECT 1 FROM users WHERE email = ?)
+      AND EXISTS (${staff})`).bind(email, email, email, member.id)] : []),
+  ]);
+  if (!change.meta.changes) return page('Action unavailable', '<h1>Invitation action unavailable</h1>', 409);
+  return redirect('/moderation/invitations');
 }
