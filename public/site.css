@@ -143,7 +143,7 @@ form:not(.inline) button:hover { background: var(--wash); }
   text-decoration: none;
 }
 .icon-link:hover, .icon-link:focus-visible { color: var(--secondary); background: var(--canvas); }
-.report-link:hover, .report-link:focus-visible { color: #a13f2b; background: #f6ece6; }
+.report-link:hover, .report-link:focus-visible { color: light-dark(#a13f2b, #ffb09b); background: light-dark(#f6ece6, #462c27); }
 .markdown-form { box-sizing: border-box; width: min(100%, 42rem); }
 .markdown-form > button { justify-self: end; }
 .markdown-field { display: grid; gap: .25rem; min-width: 0; width: 100%; }
@@ -219,6 +219,7 @@ form .markdown-field textarea {
 
 .theme-presets, .theme-actions { display: flex; flex-wrap: wrap; gap: .5rem .75rem; }
 .theme-form { max-width: 20rem; margin-block: 1rem; }
+.theme-preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .75rem; }
 .theme-preview {
   max-width: 34rem;
   background: var(--canvas);

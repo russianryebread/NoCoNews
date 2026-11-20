@@ -152,7 +152,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
             <label for="sign-in-email">Email address
               <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength={254} required />
             </label>
-            <div class="cf-turnstile" data-size="flexible" data-sitekey={env.TURNSTILE_SITE_KEY} />
+            <div class="cf-turnstile" data-size="flexible" data-theme="auto" data-sitekey={env.TURNSTILE_SITE_KEY} />
             <button class="primary">Send sign-in link</button>
           </StackForm>
         </section>

@@ -50,12 +50,34 @@ async function publishedPalette(db: D1Database): Promise<Palette> {
     .first<Palette>() ?? presets[0].colors;
 }
 
-function stylesheet(selector: string, palette: Palette, preview: boolean): Response {
-  const css = `${selector} {
+function mix(color: string, other: string, amount: number): string {
+  return '#' + [1, 3, 5].map(index => {
+    const channel = parseInt(color.slice(index, index + 2), 16);
+    const target = parseInt(other.slice(index, index + 2), 16);
+    return Math.round(channel + (target - channel) * amount).toString(16).padStart(2, '0');
+  }).join('');
+}
+
+function darkPalette(palette: Palette): Palette {
+  const background = luminance(palette.background) <= 0.08
+    ? palette.background
+    : mix(palette.background, '#121513', 0.94);
+  const primary = mix(palette.primary, '#ffffff', 0.55);
+  const surface = mix(background, '#ffffff', 0.04);
+  const secondaryTint = mix(palette.secondary, '#ffffff', 0.48);
+  const secondary = contrast(secondaryTint, surface) >= 4.5 ? secondaryTint : '#ffffff';
+  const wash = mix(background, secondary, 0.09);
+  return { background, primary: contrast(primary, wash) >= 4.5 ? primary : '#ffffff', secondary };
+}
+
+function paletteRule(selector: string, palette: Palette): string {
+  const ink = readable(palette.background);
+  return `${selector} {
+    color-scheme: ${ink === '#ffffff' ? 'dark' : 'light'};
     --accent: ${palette.primary};
     --secondary: ${palette.secondary};
     --canvas: ${palette.background};
-    --ink: ${readable(palette.background)};
+    --ink: ${ink};
     --on-accent: ${readable(palette.primary)};
     --muted: color-mix(in srgb, var(--ink) 78%, var(--canvas));
     --rule: color-mix(in srgb, var(--ink) 20%, var(--canvas));
@@ -63,6 +85,13 @@ function stylesheet(selector: string, palette: Palette, preview: boolean): Respo
     --surface: color-mix(in srgb, var(--canvas) 96%, var(--ink));
     --wash: color-mix(in srgb, var(--canvas) 91%, var(--secondary));
   }`;
+}
+
+function stylesheet(palette: Palette, preview: boolean): Response {
+  const dark = darkPalette(palette);
+  const css = preview
+    ? `${paletteRule('.theme-preview-light', palette)}\n${paletteRule('.theme-preview-dark', dark)}`
+    : `${paletteRule(':root', palette)}\n@media (prefers-color-scheme: dark) { ${paletteRule(':root', dark)} }`;
   return new Response(css, { headers: {
     'Content-Type': 'text/css; charset=utf-8',
     'X-Content-Type-Options': 'nosniff',
@@ -89,21 +118,27 @@ function appearancePage(colors: Palette, options: { error?: string; saved?: bool
         <button name="intent" value="publish">Publish</button>
       </div>
     </StackForm>
-    <section class="theme-preview" aria-labelledby="theme-preview-title">
-      <h2 id="theme-preview-title">Preview</h2>
-      <p class="headline">A new trail opens along the Poudre</p>
-      <p class="metadata">2 points · foothillsreader · 1 hour ago</p>
-      <p>Primary colors appear in headings and links. The secondary color accents highlights and hover states.</p>
-      <p class="theme-preview-highlight">Secondary highlight</p>
-    </section>
+    <div class="theme-preview-grid">
+      <PalettePreview mode="light" />
+      <PalettePreview mode="dark" />
+    </div>
   </>).toString(), options.status ?? 200, preview);
+}
+
+function PalettePreview({ mode }: { mode: 'light' | 'dark' }) {
+  return <section class={`theme-preview theme-preview-${mode}`} aria-labelledby={`theme-preview-${mode}`}>
+    <h2 id={`theme-preview-${mode}`}>{mode === 'light' ? 'Base palette' : 'Dark mode'}</h2>
+    <p class="headline">A new trail opens along the Poudre</p>
+    <p class="metadata">2 points · foothillsreader · 1 hour ago</p>
+    <p class="theme-preview-highlight">Secondary highlight</p>
+  </section>;
 }
 
 export async function appearance(request: Request, db: D1Database, url: URL): Promise<Response | undefined> {
   if (url.pathname === '/theme.css' && ['GET', 'HEAD'].includes(request.method)) {
-    if (!url.search) return stylesheet(':root', await publishedPalette(db), false);
+    if (!url.search) return stylesheet(await publishedPalette(db), false);
     const colors = parsePalette(url.searchParams);
-    return colors ? stylesheet('.theme-preview', colors, true) : new Response(null, { status: 400 });
+    return colors ? stylesheet(colors, true) : new Response(null, { status: 400 });
   }
   if (url.pathname !== '/admin/appearance' || !['GET', 'HEAD', 'POST'].includes(request.method)) return;
 
