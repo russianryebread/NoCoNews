@@ -1,3 +1,4 @@
+import { Button } from './components/button';
 import type { Member } from './auth';
 import { Author, MarkdownBody, Publisher, RelativeTime } from './components/content';
 import { Composer, StackForm } from './components/form';
@@ -51,8 +52,8 @@ function VoteControl({ kind, item, member }: {
   if (!member?.username || member.id === item.author_id) return null;
   const resource = kind === 'story' ? 'stories' : 'comments';
   return <form class="inline" method="post" action={`/${resource}/${item.id}/vote`}>
-    <button name="voted" value={item.voted ? '0' : '1'} aria-pressed={String(Boolean(item.voted))}
-      aria-label={item.voted ? 'Remove upvote' : 'Upvote'}>▲</button>
+    <Button tone="compact" name="voted" value={item.voted ? '0' : '1'} aria-pressed={String(Boolean(item.voted))}
+      aria-label={item.voted ? 'Remove upvote' : 'Upvote'}>▲</Button>
   </form>;
 }
 

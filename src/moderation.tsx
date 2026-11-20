@@ -1,3 +1,4 @@
+import { Button } from './components/button';
 import { currentMember, type Member } from './auth';
 import { InvalidForm, readForm, redirect } from './forms';
 import { page, profileLink } from './html';
@@ -101,8 +102,8 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
         <StackForm action="/moderation/actions">
           <HiddenTarget type={type} id={id} />
           <ModeratorReason label="Moderator reason" />
-          <div><button name="action" value="dismiss">Dismiss reports</button>{' '}
-            <button name="action" value="hide">Hide</button></div>
+          <div><Button name="action" value="dismiss">Dismiss reports</Button>{' '}
+            <Button name="action" value="hide">Hide</Button></div>
         </StackForm></article>;
     });
     return page('Reports', (<><h1>Reports</h1>{moderationNav()}{entries.length ? entries : <p>No open reports.</p>}
@@ -110,7 +111,7 @@ export async function moderation(request: Request, db: D1Database, url: URL): Pr
         <label>Type <select name="type"><option>story</option><option>comment</option></select></label>
         <label>ID <input type="number" min={1} name="id" required /></label>
         <ModeratorReason label="Reason" />
-        <button name="action" value="restore">Restore</button>
+        <Button name="action" value="restore">Restore</Button>
       </StackForm></>).toString());
   }
   if (request.method === 'POST' && path === '/moderation/actions') return moderate(db, member, await readForm(request));
@@ -203,9 +204,9 @@ async function workspace(db: D1Database, member: Member, url: URL): Promise<Resp
           <StackForm action="/moderation/accounts">
             <input type="hidden" name="id" value={user.id} />
             <ModeratorReason label="Reason" />
-            <button name="action" value={user.shadow_banned ? 'unshadow' : 'shadow'}>
+            <Button name="action" value={user.shadow_banned ? 'unshadow' : 'shadow'}>
               {user.shadow_banned ? 'Lift shadow ban' : 'Shadow-ban account'}
-            </button>
+            </Button>
           </StackForm>
         </details>}
       </article>)}
@@ -234,9 +235,9 @@ async function workspace(db: D1Database, member: Member, url: URL): Promise<Resp
           <input type="hidden" name="workspace" value="1" />
           <ModeratorReason label="Reason" />
           <div class="moderation-buttons">
-            {item.state === 'visible' ? <button name="action" value="hide">Hide</button> : <button name="action" value="restore">Restore</button>}
-            {item.moderation_status !== 'archived' && item.moderation_status !== 'removed' && <button name="action" value="archive">Archive</button>}
-            {item.moderation_status !== 'removed' && <button name="action" value="remove">Remove</button>}
+            {item.state === 'visible' ? <Button name="action" value="hide">Hide</Button> : <Button name="action" value="restore">Restore</Button>}
+            {item.moderation_status !== 'archived' && item.moderation_status !== 'removed' && <Button name="action" value="archive">Archive</Button>}
+            {item.moderation_status !== 'removed' && <Button name="action" value="remove">Remove</Button>}
           </div>
         </StackForm>}
       </details>
@@ -315,9 +316,9 @@ async function invitations(db: D1Database, member: Member, url: URL): Promise<Re
       {item.revoked_at && <p class="metadata">Revoked by <Author username={item.revoked_by} /> · <RelativeTime seconds={item.revoked_at} /></p>}
       {!item.account_id && <StackForm action="/moderation/invitations">
         <input type="hidden" name="email" value={item.email} />
-        <button name="action" value={item.revoked_at ? 'restore' : 'revoke'}>
+        <Button name="action" value={item.revoked_at ? 'restore' : 'revoke'}>
           {item.revoked_at ? 'Restore invite' : 'Revoke invite'}
-        </button>
+        </Button>
       </StackForm>}
     </article>)}
     {results.length > 25 && <p>

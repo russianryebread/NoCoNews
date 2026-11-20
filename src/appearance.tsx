@@ -1,3 +1,4 @@
+import { Button } from './components/button';
 import { currentMember } from './auth';
 import { StackForm } from './components/form';
 import { readForm, redirect } from './forms';
@@ -72,13 +73,15 @@ function darkPalette(palette: Palette): Palette {
 
 function paletteRule(selector: string, palette: Palette): string {
   const ink = readable(palette.background);
+  const onAccent = readable(palette.primary);
   return `${selector} {
     color-scheme: ${ink === '#ffffff' ? 'dark' : 'light'};
     --accent: ${palette.primary};
     --secondary: ${palette.secondary};
     --canvas: ${palette.background};
     --ink: ${ink};
-    --on-accent: ${readable(palette.primary)};
+    --on-accent: ${onAccent};
+    --accent-hover: ${mix(palette.primary, onAccent === '#ffffff' ? '#000000' : '#ffffff', 0.16)};
     --muted: color-mix(in srgb, var(--ink) 78%, var(--canvas));
     --rule: color-mix(in srgb, var(--ink) 20%, var(--canvas));
     --field-border: color-mix(in srgb, var(--ink) 52%, var(--canvas));
@@ -114,8 +117,8 @@ function appearancePage(colors: Palette, options: { error?: string; saved?: bool
         <input name={field} value={colors[field]} pattern="#[a-fA-F0-9]{6}" maxlength={7} spellcheck={false} required />
       </label>)}
       <div class="theme-actions">
-        <button name="intent" value="preview">Preview colors</button>
-        <button name="intent" value="publish">Publish</button>
+        <Button name="intent" value="preview">Preview colors</Button>
+        <Button tone="primary" name="intent" value="publish">Publish</Button>
       </div>
     </StackForm>
     <div class="theme-preview-grid">

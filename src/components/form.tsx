@@ -1,3 +1,4 @@
+import { Button } from './button';
 import type { Child } from 'hono/jsx';
 
 export function StackForm({ action, className, children }: {
@@ -30,7 +31,7 @@ export function Composer({ id, name, label, showLabel = false, placeholder, rows
         <span class="composer-count" data-count="" aria-label="Character count">
           <span data-length="">{(value ?? '').replace(/\r\n?/g, '\n').length}</span> / {maxLength}
         </span>
-        <button class="composer-submit">{submit}</button>
+        <Button tone="primary">{submit}</Button>
       </div>
     </div>
     {hint && <small class="metadata" id={hintId}>{hint}</small>}

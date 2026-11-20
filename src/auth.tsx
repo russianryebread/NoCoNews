@@ -1,3 +1,4 @@
+import { Button } from './components/button';
 import { mailConfigured, sendInvitationMail, sendSignInMail } from './mail';
 import { cookieValue, InvalidForm, readForm, redirect } from './forms';
 import { page, profileLink } from './html';
@@ -198,7 +199,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
               <input id="sign-in-email" type="email" name="email" autocomplete="email" maxlength={254} required />
             </label>
             <div class="cf-turnstile" data-size="flexible" data-theme="auto" data-sitekey={env.TURNSTILE_SITE_KEY} />
-            <button class="primary">Send sign-in link</button>
+            <Button tone="primary">Send sign-in link</Button>
           </StackForm>
         </section>
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
@@ -217,7 +218,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
         <StackForm action="/auth/confirm">
           <input type="hidden" name="token" value={raw} />
           <input type="hidden" name="csrf" value={csrf} />
-          <button>Sign in</button>
+          <Button tone="primary">Sign in</Button>
         </StackForm>
       </>).toString());
       response.headers.set('Set-Cookie', `${confirmCookie}=${csrf}; ${cookieFlags}; Max-Age=900`);
@@ -237,7 +238,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
                 ? <p><Author username={member.username} /> · <a href={profileLink(member.username)}>Edit bio</a></p>
                 : <StackForm action="/account">
                     <label>Username <input name="username" required maxlength={24} /></label>
-                    <button>Save username</button>
+                    <Button>Save username</Button>
                   </StackForm>}
             </section>
             {member.role !== 'member' && <section aria-labelledby="account-admin-title">
@@ -247,7 +248,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
                 {member.role === 'admin' && <li><a href="/admin/appearance">Appearance</a></li>}
               </ul>
             </section>}
-            <form method="post" action="/auth/logout"><button>Sign out</button></form>
+            <form method="post" action="/auth/logout"><Button>Sign out</Button></form>
           </div>
           {member.username && env.MAIL_PROVIDER === 'mailgun' && mailConfigured(env) &&
             <section id="invite" class="invite-card" aria-labelledby="invite-title">
@@ -255,7 +256,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
               <InviteFeedback outcome={url.searchParams.get('invite')} />
               <StackForm action="/account/invite">
                 <label>Email address <input type="email" name="email" autocomplete="off" maxlength={254} required /></label>
-                <button>Invite</button>
+                <Button>Invite</Button>
               </StackForm>
             </section>}
         </div>

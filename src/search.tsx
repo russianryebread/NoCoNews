@@ -1,3 +1,4 @@
+import { Button } from './components/button';
 import { Publisher } from './components/content';
 import { escapeHtml, page } from './html';
 
@@ -34,7 +35,7 @@ export async function search(db: D1Database, url: URL): Promise<Response> {
     <select id="type" name="type">
       <option value="stories">Stories</option>
       <option value="comments" selected={type === 'comments'}>Comments</option>
-    </select><button>Search</button>
+    </select><Button>Search</Button>
   </form></>).toString();
 
   if (query.length > 160 || terms.length > 8 || !['stories', 'comments'].includes(type)
