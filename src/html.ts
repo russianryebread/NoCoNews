@@ -4,7 +4,7 @@ export function escapeHtml(value: unknown): string {
   );
 }
 
-export function page(title: string, content: string, status = 200): Response {
+export function page(title: string, content: string, status = 200, previewStylesheet?: string): Response {
   return new Response(`<!doctype html>
 <html lang="en">
 <head>
@@ -12,6 +12,8 @@ export function page(title: string, content: string, status = 200): Response {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/theme.css">
+${previewStylesheet ? `<link rel="stylesheet" href="${escapeHtml(previewStylesheet)}">` : ''}
 </head>
 <body>
 <header><a class="brand" href="/">NoCoNews</a><nav aria-label="Main">

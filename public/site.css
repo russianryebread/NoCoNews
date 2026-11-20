@@ -17,8 +17,15 @@
 :root {
   color-scheme: light;
   font: 100%/1.5 Inter, system-ui, sans-serif;
-  background: #faf9f6;
-  color: #252722;
+  background: var(--canvas);
+  color: var(--ink);
+  --canvas: #faf9f6;
+  --ink: #252722;
+  --secondary: #176549;
+  --on-accent: #fff;
+  --surface: #fffefa;
+  --wash: #eef1e9;
+  --field-border: #858a81;
   --muted: #565b53;
   --rule: #d8dad3;
   --accent: #355645;
@@ -43,7 +50,7 @@ header {
 a { color: var(--accent); }
 .brand { font-weight: 700; text-decoration: none; }
 nav a { display: inline-block; padding: .25rem; font-size: .875rem; }
-h1, h2, h3, h4, h5, h6 { font-family: var(--heading-font); }
+h1, h2, h3, h4, h5, h6 { font-family: var(--heading-font); color: var(--accent); }
 h1 { font-size: 1.125rem; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
@@ -65,10 +72,10 @@ h2 { font-size: 1rem; }
 form input:not([type="hidden"]), form select, form textarea, form:not(.inline) button {
   box-sizing: border-box;
   min-height: 2.125rem;
-  border: 1px solid #858a81;
+  border: 1px solid var(--field-border);
   border-radius: .375rem;
   padding: .35rem .65rem;
-  background: #fff;
+  background: var(--surface);
   color: inherit;
   font: inherit;
   font-size: .875rem;
@@ -81,18 +88,18 @@ form input:not([type="hidden"]):focus, form select:focus, form textarea:focus {
 }
 
 form:not(.inline) button {
-  background: #f1f2ed;
+  background: var(--wash);
   color: var(--accent);
   font-weight: 600;
   cursor: pointer;
 }
 
-form:not(.inline) button:hover { background: #e7ebe3; }
+form:not(.inline) button:hover { background: var(--wash); }
 
 .inline { display: inline; }
 .inline button, summary { color: var(--muted); cursor: pointer; font-size: .8125rem; }
 .inline button { min-width: 1.5rem; min-height: 1.5rem; border: 0; background: transparent; }
-.inline button[aria-pressed="true"] { color: var(--accent); background: #e1e9e1; }
+.inline button[aria-pressed="true"] { color: var(--accent); background: var(--wash); }
 .stack { display: grid; gap: .75rem; justify-items: start; margin-block: .5rem 1rem; }
 .stack label { display: grid; gap: .2rem; width: min(100%, 32rem); }
 .stack textarea { resize: vertical; }
@@ -104,7 +111,7 @@ form:not(.inline) button:hover { background: #e7ebe3; }
   padding: 1.5rem;
   border: 1px solid var(--rule);
   border-radius: .75rem;
-  background: #fffefa;
+  background: var(--surface);
   box-shadow: 0 2px 8px rgb(37 39 34 / 7%);
 }
 
@@ -114,8 +121,8 @@ form:not(.inline) button:hover { background: #e7ebe3; }
 .auth-panel label { gap: .375rem; font-size: .875rem; font-weight: 600; }
 .auth-panel input[type="email"] { min-height: 2.75rem; font-size: 1rem; }
 .auth-panel .cf-turnstile { width: 100%; min-width: 0; }
-.auth-panel button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.auth-panel button.primary:hover { background: #294537; }
+.auth-panel button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.auth-panel button.primary:hover { text-decoration: underline; }
 
 @media (max-width: 380px) {
   body:has(.auth-panel) { padding-inline: .5rem; }
@@ -135,7 +142,7 @@ form:not(.inline) button:hover { background: #e7ebe3; }
   color: var(--muted);
   text-decoration: none;
 }
-.icon-link:hover, .icon-link:focus-visible { color: #176549; background: #e8eee7; }
+.icon-link:hover, .icon-link:focus-visible { color: var(--secondary); background: var(--canvas); }
 .report-link:hover, .report-link:focus-visible { color: #a13f2b; background: #f6ece6; }
 .markdown-form { box-sizing: border-box; width: min(100%, 42rem); }
 .markdown-form > button { justify-self: end; }
@@ -151,7 +158,7 @@ form .markdown-field textarea {
   padding: clamp(.75rem, 3vw, 1.25rem);
   border: 1px solid var(--rule);
   border-radius: .625rem;
-  background: #f3f3ed;
+  background: var(--wash);
   box-shadow: 0 1px 3px rgb(37 39 34 / 5%);
 }
 .comment-form, .story-form { width: min(100%, 32rem); }
@@ -177,8 +184,8 @@ form .markdown-field textarea {
   border-inline-start: 2px solid var(--rule);
   color: var(--muted);
 }
-.markdown code { background: #efefe9; border-radius: .2rem; padding: .05em .2em; }
-.markdown pre { background: #efefe9; padding: .5rem; overflow: auto; }
+.markdown code { background: var(--wash); border-radius: .2rem; padding: .05em .2em; }
+.markdown pre { background: var(--wash); padding: .5rem; overflow: auto; }
 .markdown pre code { padding: 0; }
 .markdown hr { border: 0; border-top: 1px solid var(--rule); }
 
@@ -209,3 +216,17 @@ form .markdown-field textarea {
     font-size: max(16px, 1rem);
   }
 }
+
+.theme-presets, .theme-actions { display: flex; flex-wrap: wrap; gap: .5rem .75rem; }
+.theme-form { max-width: 20rem; margin-block: 1rem; }
+.theme-preview {
+  max-width: 34rem;
+  background: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: .625rem;
+  padding: 1rem;
+}
+.theme-preview h2, .theme-preview p { margin: 0 0 .35rem; }
+.theme-preview .headline { color: var(--accent); }
+.theme-preview-highlight { color: var(--secondary); }

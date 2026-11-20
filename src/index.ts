@@ -1,3 +1,4 @@
+import { appearance } from './appearance';
 import { profile } from './profiles';
 import { moderation } from './moderation';
 import { refreshRanking } from './ranking';
@@ -21,6 +22,8 @@ async function route(request: Request, env: AppEnv): Promise<Response> {
   const url = new URL(request.url);
   const { pathname } = url;
   try {
+    const theme = await appearance(request, env.DB, url);
+    if (theme) return theme;
     const account = await auth(request, env, url);
     if (account) return account;
     const userProfile = await profile(request, env.DB, pathname);

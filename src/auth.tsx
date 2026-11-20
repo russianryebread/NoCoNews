@@ -184,6 +184,7 @@ export async function auth(request: Request, env: AppEnv, url: URL): Promise<Res
         <h1>Account</h1>
         {url.searchParams.has('reported') && <p>Report received.</p>}
         {member.role !== 'member' && <p><a href="/moderation/reports">Moderation queue</a></p>}
+        {member.role === 'admin' && <p><a href="/admin/appearance">Appearance</a></p>}
         {member.username
           ? <p><Author username={member.username} /> · <a href={profileLink(member.username)}>Edit bio</a></p>
           : <StackForm action="/account"><label>Username <input name="username" required maxlength={24} /></label><button>Save</button></StackForm>}
