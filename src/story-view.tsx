@@ -1,5 +1,5 @@
 import type { Member } from './auth';
-import { Author, MarkdownBody, Publisher } from './components/content';
+import { Author, MarkdownBody, Publisher, RelativeTime } from './components/content';
 import { MarkdownField, StackForm } from './components/form';
 
 export interface Story {
@@ -61,7 +61,6 @@ export function StoryRow({ story, member, heading = false }: { story: Story; mem
   const articleUrl = story.url ? URL.parse(story.url) : null;
   const external = articleUrl && ['http:', 'https:'].includes(articleUrl.protocol);
   const comments = `${story.comment_count} ${story.comment_count === 1 ? 'comment' : 'comments'}`;
-  const timestamp = new Date(story.created_at * 1000).toISOString();
   const headline = heading && !external ? story.title :
     <a class="headline" href={external ? articleUrl.href : discussion}
       target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>{story.title}</a>;
@@ -72,7 +71,7 @@ export function StoryRow({ story, member, heading = false }: { story: Story; mem
     {heading ? <h1>{headline}</h1> : <>{vote}{headline}{' '}{publisher}</>}
     <div class="metadata">
       {heading && <>{vote}{publisher && <>{publisher}{' · '}</>}</>}
-      {story.vote_count} points · <Author username={story.username} /> · <time datetime={timestamp}>{timestamp.slice(0, 10)}</time> ·{' '}
+      {story.vote_count} points · <Author username={story.username} /> · <RelativeTime seconds={story.created_at} /> ·{' '}
       <a class="icon-link" href={heading ? `${discussion}#comments` : discussion} aria-label={comments} title={comments}>
         <Icon name="comment" /><span>{story.comment_count}</span>
       </a><ReportLink kind="story" id={story.id} member={member} />
